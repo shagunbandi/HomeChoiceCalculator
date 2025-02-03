@@ -214,6 +214,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       totalBuyingCost,
       totalRentalCost: cumulativeCostRenting,
       breakevenMonth,
+      oneTimeExpense: data.one_time_expense,
       amortizationSchedule,
     });
 
