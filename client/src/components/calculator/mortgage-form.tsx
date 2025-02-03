@@ -167,7 +167,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
 
       // Cost of buying calculation for this month
       const costOfBuying = cumulativeInterest - cumulativeTaxCredit + 
-        cumulativeMaintenance + (data.buying_cost - data.sell_price);
+        cumulativeMaintenance + data.one_time_expense + (data.buying_cost - data.sell_price);
 
       // Update rent with annual increase
       if (month % 12 === 0) {

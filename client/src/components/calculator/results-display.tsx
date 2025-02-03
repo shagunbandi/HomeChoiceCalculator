@@ -27,6 +27,7 @@ interface ResultsDisplayProps {
     totalBuyingCost: number;
     totalRentalCost: number;
     breakevenMonth: number;
+    oneTimeExpense: number; // Added oneTimeExpense
     amortizationSchedule: Array<{
       month: number;
       principal: number;
@@ -114,12 +115,16 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                   <span>€{selectedMonthData.cumulativeMaintenance.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span>One-time Expenses</span>
+                  <span>€{calculation.oneTimeExpense.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
                   <span>Property Value Change</span>
                   <span>€{(calculation.capitalGain).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold border-t pt-2">
                   <span>Total Cost of Buying</span>
-                  <span>€{selectedMonthData.cumulativeCostBuying.toFixed(2)}</span>
+                  <span>€{(selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -135,8 +140,8 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
             <div className="border-t pt-4">
               <div className="flex justify-between text-lg font-bold">
                 <span>Difference (Rent - Buy)</span>
-                <span className={selectedMonthData.cumulativeCostRenting - selectedMonthData.cumulativeCostBuying > 0 ? "text-green-600" : "text-red-600"}>
-                  €{(selectedMonthData.cumulativeCostRenting - selectedMonthData.cumulativeCostBuying).toFixed(2)}
+                <span className={selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense) > 0 ? "text-green-600" : "text-red-600"}>
+                  €{(selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense)).toFixed(2)}
                 </span>
               </div>
             </div>
