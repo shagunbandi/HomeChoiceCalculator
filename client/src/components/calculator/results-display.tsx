@@ -33,6 +33,7 @@ interface ResultsDisplayProps {
       cumulativeCostBuying: number;
       cumulativeCostRenting: number;
       monthlyPaymentNet: number;
+      cumulativeMaintenance: number;
     }>;
   };
 }
@@ -58,7 +59,7 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">€{calculation.monthlyPaymentNet.toFixed(2)}</div>
             <div className="text-sm text-muted-foreground">Net Monthly Payment</div>
-            <div className="text-xs text-muted-foreground">(after tax credit)</div>
+            <div className="text-xs text-muted-foreground">(after tax benefit)</div>
           </CardContent>
         </Card>
       </div>
@@ -103,6 +104,10 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
               <div className="flex justify-between font-bold pt-2">
                 <span>Total Cost of Renting:</span>
                 <span>€{calculation.totalRentalCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Breakeven Point:</span>
+                <span>{calculation.breakevenMonth} months</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Cost Difference (Rent - Buy):</span>
