@@ -70,7 +70,22 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       totalInterest: number;
       breakevenMonth: number;
     }) => {
-      const res = await apiRequest("POST", "/api/calculations", data);
+      const res = await apiRequest("POST", "/api/calculations", {
+        buyingCost: data.buying_cost,
+        downPayment: data.down_payment,
+        sellPrice: data.sell_price,
+        oneTimeExpense: data.one_time_expense,
+        interestRate: data.interest_rate,
+        loanTerm: data.term_years,
+        yearlyMaintenance: data.yearly_maintenance,
+        taxCreditRate: data.tax_credit_rate,
+        currentRent: data.current_rent,
+        rentalIncrease: data.rental_increase,
+        monthlyPayment: data.monthlyPayment,
+        totalInterest: data.totalInterest,
+        breakevenMonth: data.breakevenMonth,
+        name: data.name
+      });
       return res.json();
     },
     onSuccess: () => {
