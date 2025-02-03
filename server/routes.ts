@@ -14,7 +14,20 @@ export function registerRoutes(app: Express): Server {
     const calculation = await db
       .insert(mortgageCalculations)
       .values({
-        ...req.body,
+        buyingCost: req.body.buyingCost,
+        downPayment: req.body.downPayment,
+        sellPrice: req.body.sellPrice,
+        oneTimeExpense: req.body.oneTimeExpense,
+        interestRate: req.body.interestRate,
+        loanTerm: req.body.loanTerm,
+        yearlyMaintenance: req.body.yearlyMaintenance,
+        taxCreditRate: req.body.mortgageTaxScheme,
+        currentRent: req.body.currentRent,
+        rentalIncrease: req.body.rentalIncrease,
+        monthlyPayment: req.body.monthlyPayment,
+        totalInterest: req.body.totalInterest,
+        breakevenMonth: req.body.breakevenMonth,
+        name: req.body.name,
         userId: req.user.id,
       })
       .returning();
