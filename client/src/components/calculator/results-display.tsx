@@ -124,7 +124,13 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                 </div>
                 <div className="flex justify-between font-bold border-t pt-2">
                   <span>Total Cost of Buying</span>
-                  <span>€{(selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense).toFixed(2)}</span>
+                  <span>€{(
+                    calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
+                    calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
+                    selectedMonthData.cumulativeMaintenance + 
+                    calculation.oneTimeExpense + 
+                    calculation.capitalGain
+                  ).toFixed(2)}</span>
                 </div>
                 
                 <div className="mt-4 p-3 bg-muted rounded-lg">
