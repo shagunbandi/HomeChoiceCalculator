@@ -9,15 +9,15 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const mortgageSchema = z.object({
   buying_cost: z.number().positive("Property value must be positive"),
-  down_payment: z.number().positive("Down payment must be positive"),
+  down_payment: z.number().min(0, "Down payment cannot be negative"),
   sell_price: z.number().positive("Selling price must be positive"),
   one_time_expense: z.number().min(0, "One-time expense cannot be negative"),
-  interest_rate: z.number().positive("Interest rate must be positive"),
+  interest_rate: z.number().positive("Interest rate must be positive").step(0.01),
   term_years: z.number().int().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
   yearly_maintenance: z.number().min(0, "Yearly maintenance cannot be negative"),
-  tax_credit_rate: z.number().min(0, "Tax credit rate cannot be negative").max(100, "Tax credit rate cannot exceed 100%"),
+  tax_credit_rate: z.number().min(0, "Tax credit rate cannot be negative").max(100, "Tax credit rate cannot exceed 100%").step(0.01),
   current_rent: z.number().min(0, "Current rent cannot be negative"),
-  rental_increase: z.number().min(0, "Rental increase cannot be negative"),
+  rental_increase: z.number().min(0, "Rental increase cannot be negative").step(0.01),
   name: z.string().optional(),
 });
 
