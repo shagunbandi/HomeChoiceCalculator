@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const mortgageSchema = z.object({
@@ -75,6 +76,24 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       rental_increase: 2,
       name: "",
     },
+  });
+
+  const { data: savedCalculations } = useQuery<Array<{
+    id: number;
+    userId: number;
+    buyingCost: string;
+    downPayment: string;
+    sellPrice: string;
+    oneTimeExpense: string;
+    interestRate: string;
+    mortgageTaxScheme: number;
+    loanTerm: number;
+    yearlyMaintenance: string;
+    currentRent: string;
+    rentalIncrease: string;
+    name?: string;
+  }>>({
+    queryKey: ["/api/calculations"],
   });
 
   const calculateMutation = useMutation({
@@ -209,8 +228,52 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {savedCalculations?.length > 0 && (
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Load Saved Calculation</FormLabel>
+                <Select
+                  onValueChange={(value) => {
+                    const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
+                    if (savedCalc) {
+                      form.reset({
+                        buying_cost: parseFloat(savedCalc.buyingCost),
+                        down_payment: parseFloat(savedCalc.downPayment),
+                        sell_price: parseFloat(savedCalc.sellPrice),
+                        one_time_expense: parseFloat(savedCalc.oneTimeExpense),
+                        interest_rate: savedCalc.interestRate,
+                        mortgage_tax_scheme: savedCalc.mortgageTaxScheme,
+                        term_years: savedCalc.loanTerm,
+                        yearly_maintenance: parseFloat(savedCalc.yearlyMaintenance),
+                        current_rent: parseFloat(savedCalc.currentRent),
+                        rental_increase: parseFloat(savedCalc.rentalIncrease),
+                        name: savedCalc.name || "",
+                      });
+                    }
+                  }}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a saved calculation" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {savedCalculations.map((calc) => (
+                      <SelectItem key={calc.id} value={calc.id.toString()}>
+                        {calc.name || `Calculation ${calc.id}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+        )}
+
         <div className="grid md:grid-cols-2 gap-4">
-          {/* Other form fields remain unchanged */}
           <FormField
             control={form.control}
             name="buying_cost"
