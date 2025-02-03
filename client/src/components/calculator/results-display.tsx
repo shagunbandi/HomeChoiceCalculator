@@ -156,8 +156,20 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
             <div className="border-t pt-4">
               <div className="flex justify-between text-lg font-bold">
                 <span>Difference (Rent - Buy)</span>
-                <span className={selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense) > 0 ? "text-green-600" : "text-red-600"}>
-                  €{(selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense)).toFixed(2)}
+                <span className={selectedMonthData.cumulativeCostRenting - (
+                  calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
+                  calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
+                  selectedMonthData.cumulativeMaintenance + 
+                  calculation.oneTimeExpense + 
+                  calculation.capitalGain
+                ) > 0 ? "text-green-600" : "text-red-600"}>
+                  €{(selectedMonthData.cumulativeCostRenting - (
+                    calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
+                    calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
+                    selectedMonthData.cumulativeMaintenance + 
+                    calculation.oneTimeExpense + 
+                    calculation.capitalGain
+                  )).toFixed(2)}
                 </span>
               </div>
             </div>
