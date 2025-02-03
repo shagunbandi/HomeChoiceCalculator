@@ -15,12 +15,25 @@ type CalculationResult = {
   }>;
 };
 
+interface SavedCalculation {
+  id: number;
+  userId: number;
+  propertyValue: string;
+  downPayment: string;
+  interestRate: string;
+  loanTerm: number;
+  monthlyPayment: string;
+  totalInterest: string;
+  name?: string;
+  createdAt: string;
+}
+
 export default function Dashboard() {
   const [currentCalculation, setCurrentCalculation] = useState<CalculationResult | null>(
     null
   );
 
-  const { data: savedCalculations } = useQuery({
+  const { data: savedCalculations } = useQuery<SavedCalculation[]>({
     queryKey: ["/api/calculations"],
   });
 
@@ -67,11 +80,15 @@ export default function Dashboard() {
                   <div className="grid grid-cols-3 gap-4 mt-2">
                     <div>
                       <p className="text-sm text-muted-foreground">Monthly Payment</p>
-                      <p className="font-medium">${calc.monthlyPayment.toFixed(2)}</p>
+                      <p className="font-medium">
+                        ${parseFloat(calc.monthlyPayment).toFixed(2)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Interest</p>
-                      <p className="font-medium">${calc.totalInterest.toFixed(2)}</p>
+                      <p className="font-medium">
+                        ${parseFloat(calc.totalInterest).toFixed(2)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Loan Term</p>
