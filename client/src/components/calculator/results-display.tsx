@@ -8,8 +8,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
+import { useState } from "react";
 
 interface ResultsDisplayProps {
   calculation: {
@@ -34,115 +36,119 @@ interface ResultsDisplayProps {
       cumulativeCostRenting: number;
       monthlyPaymentNet: number;
       cumulativeMaintenance: number;
+      monthlyGrossMortgage: number;
+      monthlyTaxCredit: number;
     }>;
   };
 }
 
 export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
+  const [selectedMonth, setSelectedMonth] = useState(1);
+  const selectedMonthData = calculation.amortizationSchedule[selectedMonth - 1];
+
   return (
     <div className="space-y-6">
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">€{calculation.monthlyPayment.toFixed(2)}</div>
-            <div className="text-sm text-muted-foreground">Base Monthly Payment</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">€{calculation.monthlyPaymentGross.toFixed(2)}</div>
-            <div className="text-sm text-muted-foreground">Gross Monthly Payment</div>
-            <div className="text-xs text-muted-foreground">(incl. maintenance)</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">€{calculation.monthlyPaymentNet.toFixed(2)}</div>
-            <div className="text-sm text-muted-foreground">Net Monthly Payment</div>
-            <div className="text-xs text-muted-foreground">(after tax benefit)</div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Payment Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2">
+            <div className="flex justify-between">
+              <span>Gross Mortgage (Principal + Interest)</span>
+              <span className="font-medium">€{selectedMonthData.monthlyGrossMortgage.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-green-600">
+              <span>Tax Benefit (Mortgage Scheme)</span>
+              <span>-€{selectedMonthData.monthlyTaxCredit.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-medium border-t pt-2">
+              <span>Net Mortgage</span>
+              <span>€{selectedMonthData.monthlyPaymentNet.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Monthly Maintenance</span>
+              <span>+€{(calculation.maintenanceTotal / (calculation.amortizationSchedule.length)).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold border-t pt-2">
+              <span>Total Monthly Expense</span>
+              <span>€{calculation.monthlyPaymentGross.toFixed(2)}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold mb-4">Buying Costs</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Loan Amount:</span>
-                <span>€{calculation.loanAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total Interest:</span>
-                <span>€{calculation.totalInterest.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total Maintenance:</span>
-                <span>€{calculation.maintenanceTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-green-600">
-                <span>Tax Credit:</span>
-                <span>€{calculation.taxCredit.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-green-600">
-                <span>Capital Gain:</span>
-                <span>€{calculation.capitalGain.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-bold pt-2 border-t">
-                <span>Net Cost of Buying:</span>
-                <span>€{calculation.totalBuyingCost.toFixed(2)}</span>
+      <Card>
+        <CardHeader>
+          <CardTitle>Breakeven Analysis</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <div className="mb-2 flex justify-between">
+              <span className="text-sm text-muted-foreground">Month: {selectedMonth}</span>
+              <span className="text-sm text-muted-foreground">Breakeven at month {calculation.breakevenMonth}</span>
+            </div>
+            <Slider
+              value={[selectedMonth]}
+              min={1}
+              max={calculation.amortizationSchedule.length}
+              step={1}
+              onValueChange={(value) => setSelectedMonth(value[0])}
+            />
+          </div>
+
+          <div className="grid gap-4">
+            <div>
+              <h4 className="font-medium mb-2">Buying Cost till Month {selectedMonth}</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Total Interest Paid</span>
+                  <span>€{selectedMonthData.interest.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-green-600">
+                  <span>Total Tax Credit (Mortgage Scheme)</span>
+                  <span>-€{(selectedMonthData.interest * (selectedMonthData.monthlyTaxCredit / selectedMonthData.interest)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Maintenance Paid</span>
+                  <span>€{selectedMonthData.cumulativeMaintenance.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Property Value Change</span>
+                  <span>€{(calculation.capitalGain).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold border-t pt-2">
+                  <span>Total Cost of Buying</span>
+                  <span>€{selectedMonthData.cumulativeCostBuying.toFixed(2)}</span>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold mb-4">Renting Costs</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between font-bold pt-2">
-                <span>Total Cost of Renting:</span>
-                <span>€{calculation.totalRentalCost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Breakeven Point:</span>
-                <span>{calculation.breakevenMonth} months</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Cost Difference (Rent - Buy):</span>
-                <span>€{(calculation.totalRentalCost - calculation.totalBuyingCost).toFixed(2)}</span>
+            <div>
+              <h4 className="font-medium mb-2">Rent Cost till Month {selectedMonth}</h4>
+              <div className="flex justify-between font-bold">
+                <span>Total Cost of Renting</span>
+                <span>€{selectedMonthData.cumulativeCostRenting.toFixed(2)}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      <Tabs defaultValue="amortization">
+            <div className="border-t pt-4">
+              <div className="flex justify-between text-lg font-bold">
+                <span>Difference (Rent - Buy)</span>
+                <span className={selectedMonthData.cumulativeCostRenting - selectedMonthData.cumulativeCostBuying > 0 ? "text-green-600" : "text-red-600"}>
+                  €{(selectedMonthData.cumulativeCostRenting - selectedMonthData.cumulativeCostBuying).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="comparison">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="amortization">Loan Balance</TabsTrigger>
-          <TabsTrigger value="comparison">Buy vs Rent</TabsTrigger>
+          <TabsTrigger value="comparison">Cost Comparison</TabsTrigger>
+          <TabsTrigger value="balance">Loan Balance</TabsTrigger>
         </TabsList>
-        <TabsContent value="amortization" className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={calculation.amortizationSchedule}
-              margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="balance"
-                stroke="hsl(var(--primary))"
-                name="Loan Balance"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </TabsContent>
         <TabsContent value="comparison" className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
@@ -166,6 +172,26 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                 dataKey="cumulativeCostRenting"
                 stroke="hsl(var(--destructive))"
                 name="Cost of Renting"
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </TabsContent>
+        <TabsContent value="balance" className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={calculation.amortizationSchedule}
+              margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="balance"
+                stroke="hsl(var(--primary))"
+                name="Loan Balance"
                 dot={false}
               />
             </LineChart>
