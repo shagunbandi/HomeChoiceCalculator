@@ -1,0 +1,66 @@
+Here's a structured breakdown of the **input fields**, **output fields**, and their respective **formulas** from your `utils.py` and `main.py` files.
+
+---
+
+## **Input Fields**
+These are the user-provided values used for calculations.
+
+| Field Name             | Description                                    | Unit  |
+|------------------------|--------------------------------|-------|
+| `buying_cost`         | Property purchase price       | €     |
+| `down_payment`        | Initial down payment          | €     |
+| `sell_price`         | Expected selling price        | €     |
+| `one_time_expense`   | Upfront costs (e.g., fees, taxes) | €     |
+| `interest_rate`      | Mortgage annual interest rate | %     |
+| `term_years`        | Mortgage term length          | Years |
+| `yearly_maintenance` | Annual maintenance cost      | €     |
+| `tax_credit_rate`    | Mortgage tax deduction rate  | %     |
+| `current_rent`      | Monthly rent                 | €     |
+| `rental_increase`   | Annual rent increase         | %     |
+
+---
+
+## **Output Fields**
+These are the computed values displayed in the application.
+
+| Field Name                         | Description                                          | Formula |
+|-------------------------------------|------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `monthly_payment`                   | Monthly mortgage payment                            | \(\text{Principal} \times \frac{r(1 + r)^n}{(1 + r)^n - 1}\) where \(r = \frac{\text{annual interest rate}}{12 \times 100}\), \(n = \text{term_years} \times 12\) |
+| `total_payments`                    | Total amount paid over mortgage term               | \( \text{monthly_payment} \times (\text{term_years} \times 12) \) |
+| `total_interest`                    | Total interest paid                                | \( \text{total_payments} - \text{loan_amount} \) |
+| `loan_amount`                       | Mortgage loan amount                               | \( \text{buying_cost} - \text{down_payment} \) |
+| `tax_credit`                        | Tax benefits from mortgage interest               | \( \text{total_interest} \times \left(\frac{\text{tax_credit_rate}}{100}\right) \) |
+| `maintenance_total`                 | Total maintenance cost over term                  | \( \text{yearly_maintenance} \times \text{term_years} \) |
+| `capital_gain`                      | Net profit/loss from property sale                | \( \text{sell_price} - \text{buying_cost} \) |
+| `total_buying_cost`                 | Final cost of buying                              | \( \text{buying_cost} + \text{total_interest} + \text{one_time_expense} + \text{maintenance_total} - \text{tax_credit} - \text{capital_gain} \) |
+| `total_rental_cost`                 | Total cost of renting over term                   | \( \sum \text{monthly_rent} \) with compounding increase, where \(\text{monthly_rent}_{\text{year } y} = \text{current_rent} \times (1 + \frac{\text{rental_increase}}{100})^y \) |
+| `breakeven_month`                   | Month where buying is cheaper than renting       | First month where \(\text{Cumulative Cost (Buying)} < \text{Cumulative Cost (Renting)}\) |
+| `net_monthly_cost_buying`           | Monthly net cost of buying                        | \( \text{Interest} + \text{Maintenance} - \text{Tax Credit} \) |
+| `cumulative_cost_buying`            | Running total of buying costs over time           | Cumulative sum of `net_monthly_cost_buying` |
+| `cumulative_cost_renting`           | Running total of renting costs over time          | Cumulative sum of `Monthly Rent` |
+| `cost_difference_rent_buy`          | Difference between total renting and buying cost  | \( \text{cumulative_cost_renting} - \text{cumulative_cost_buying} \) |
+
+---
+
+## **Breakeven Point Calculation**
+The breakeven month is found by iterating through each month and comparing the cumulative costs:
+
+- **Buying cost:**  
+  \[
+  \text{total_buying_cost} = \text{interest paid} + \text{maintenance} + \text{one-time expenses} - \text{tax credit} - \text{capital gain}
+  \]
+- **Renting cost:**  
+  \[
+  \text{total_rental_cost} = \sum \text{monthly_rent}
+  \]
+- The breakeven occurs when:  
+  \[
+  \text{cumulative_cost_buying} < \text{cumulative_cost_renting}
+  \]
+
+---
+
+### **Summary**
+Your mortgage calculator provides insights into buying vs. renting by using inputs such as property price, down payment, interest rates, rent, and taxes. It calculates monthly payments, cumulative costs, tax credits, and breakeven points to help users make informed decisions.
+
+Would you like further refinements or additional metrics added? 🚀

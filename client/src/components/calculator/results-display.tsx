@@ -6,6 +6,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,12 +14,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface ResultsDisplayProps {
   calculation: {
     monthlyPayment: number;
+    totalPayments: number;
     totalInterest: number;
+    loanAmount: number;
+    taxCredit: number;
+    maintenanceTotal: number;
+    capitalGain: number;
+    totalBuyingCost: number;
+    totalRentalCost: number;
+    breakevenMonth: number;
     amortizationSchedule: Array<{
       month: number;
       principal: number;
       interest: number;
       balance: number;
+      cumulativeCostBuying: number;
+      cumulativeCostRenting: number;
     }>;
   };
 }
@@ -26,25 +37,81 @@ interface ResultsDisplayProps {
 export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
   return (
     <div className="space-y-6">
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">${calculation.monthlyPayment.toFixed(2)}</div>
+            <div className="text-2xl font-bold">€{calculation.monthlyPayment.toFixed(2)}</div>
             <div className="text-sm text-muted-foreground">Monthly Payment</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">${calculation.totalInterest.toFixed(2)}</div>
+            <div className="text-2xl font-bold">€{calculation.totalInterest.toFixed(2)}</div>
             <div className="text-sm text-muted-foreground">Total Interest</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{calculation.breakevenMonth} months</div>
+            <div className="text-sm text-muted-foreground">Breakeven Point</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-semibold mb-4">Buying Costs</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Loan Amount:</span>
+                <span>€{calculation.loanAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Interest:</span>
+                <span>€{calculation.totalInterest.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Maintenance:</span>
+                <span>€{calculation.maintenanceTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-green-600">
+                <span>Tax Credit:</span>
+                <span>€{calculation.taxCredit.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-green-600">
+                <span>Capital Gain:</span>
+                <span>€{calculation.capitalGain.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold pt-2 border-t">
+                <span>Total Cost:</span>
+                <span>€{calculation.totalBuyingCost.toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-semibold mb-4">Renting Costs</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between font-bold pt-2">
+                <span>Total Rental Cost:</span>
+                <span>€{calculation.totalRentalCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Cost Difference (Rent - Buy):</span>
+                <span>€{(calculation.totalRentalCost - calculation.totalBuyingCost).toFixed(2)}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="amortization">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="amortization">Amortization</TabsTrigger>
-          <TabsTrigger value="breakdown">Payment Breakdown</TabsTrigger>
+          <TabsTrigger value="amortization">Loan Balance</TabsTrigger>
+          <TabsTrigger value="comparison">Buy vs Rent</TabsTrigger>
         </TabsList>
         <TabsContent value="amortization" className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -60,12 +127,13 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                 type="monotone"
                 dataKey="balance"
                 stroke="hsl(var(--primary))"
+                name="Loan Balance"
                 dot={false}
               />
             </LineChart>
           </ResponsiveContainer>
         </TabsContent>
-        <TabsContent value="breakdown" className="h-[300px]">
+        <TabsContent value="comparison" className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={calculation.amortizationSchedule}
@@ -75,18 +143,19 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip />
+              <Legend />
               <Line
                 type="monotone"
-                dataKey="principal"
+                dataKey="cumulativeCostBuying"
                 stroke="hsl(var(--primary))"
-                name="Principal"
+                name="Cost of Buying"
                 dot={false}
               />
               <Line
                 type="monotone"
-                dataKey="interest"
+                dataKey="cumulativeCostRenting"
                 stroke="hsl(var(--destructive))"
-                name="Interest"
+                name="Cost of Renting"
                 dot={false}
               />
             </LineChart>
