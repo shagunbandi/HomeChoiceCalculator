@@ -12,7 +12,14 @@ const mortgageSchema = z.object({
   down_payment: z.number().min(0, "Down payment cannot be negative"),
   sell_price: z.number().positive("Selling price must be positive"),
   one_time_expense: z.number().min(0, "One-time expense cannot be negative"),
-  interest_rate: z.number().positive("Interest rate must be positive").step(0.01),
+  interest_rate: z.string()
+    .refine(val => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num > 0;
+    }, "Interest rate must be a positive number")
+    .refine(val => {
+      return /^\d+\.\d{2}$/.test(val);
+    }, "Interest rate must have exactly 2 decimal places"),
   term_years: z.number().int().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
   yearly_maintenance: z.number().min(0, "Yearly maintenance cannot be negative"),
   tax_credit_rate: z.number().min(0, "Tax credit rate cannot be negative").max(100, "Tax credit rate cannot exceed 100%").step(0.01),
@@ -26,6 +33,8 @@ type MortgageFormData = z.infer<typeof mortgageSchema>;
 interface MortgageFormProps {
   onCalculate: (result: {
     monthlyPayment: number;
+    monthlyPaymentGross: number;
+    monthlyPaymentNet: number;
     totalPayments: number;
     totalInterest: number;
     loanAmount: number;
@@ -42,6 +51,7 @@ interface MortgageFormProps {
       balance: number;
       cumulativeCostBuying: number;
       cumulativeCostRenting: number;
+      monthlyPaymentNet: number;
     }>;
   }) => void;
 }
@@ -54,7 +64,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       down_payment: 60000,
       sell_price: 350000,
       one_time_expense: 5000,
-      interest_rate: 3.5,
+      interest_rate: "3.50",
       term_years: 30,
       yearly_maintenance: 2400,
       tax_credit_rate: 30,
@@ -95,7 +105,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
 
   const onSubmit = (data: MortgageFormData) => {
     const loanAmount = data.buying_cost - data.down_payment;
-    const monthlyRate = data.interest_rate / 100 / 12;
+    const monthlyRate = parseFloat(data.interest_rate) / 100 / 12;
     const numberOfPayments = data.term_years * 12;
 
     const monthlyPayment =
@@ -108,17 +118,16 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
     const maintenanceTotal = data.yearly_maintenance * data.term_years;
     const capitalGain = data.sell_price - data.buying_cost;
 
-    const totalBuyingCost = 
-      data.buying_cost + 
-      totalInterest + 
-      data.one_time_expense + 
-      maintenanceTotal - 
-      taxCredit - 
-      capitalGain;
+    // Monthly calculations
+    const monthlyMaintenance = data.yearly_maintenance / 12;
+    const monthlyTaxCredit = taxCredit / numberOfPayments;
+    const monthlyPaymentGross = monthlyPayment + monthlyMaintenance;
+    const monthlyPaymentNet = monthlyPaymentGross - monthlyTaxCredit;
 
     const amortizationSchedule = [];
     let balance = loanAmount;
-    let cumulativeCostBuying = data.down_payment + data.one_time_expense;
+    let cumulativeInterest = 0;
+    let cumulativePrincipal = 0;
     let cumulativeCostRenting = 0;
     let breakevenMonth = -1;
     let currentRent = data.current_rent;
@@ -128,14 +137,11 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       const principalPayment = monthlyPayment - interest;
       balance -= principalPayment;
 
-      // Monthly maintenance cost
-      const monthlyMaintenance = data.yearly_maintenance / 12;
+      cumulativeInterest += interest;
+      cumulativePrincipal += principalPayment;
 
-      // Monthly tax credit
-      const monthlyTaxCredit = taxCredit / numberOfPayments;
-
-      // Update cumulative costs
-      cumulativeCostBuying += monthlyPayment + monthlyMaintenance - monthlyTaxCredit;
+      // Cost of buying calculation for this month
+      const costOfBuying = cumulativeInterest - cumulativePrincipal + (data.buying_cost - data.sell_price);
 
       // Update rent with annual increase
       if (month % 12 === 0) {
@@ -144,7 +150,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       cumulativeCostRenting += currentRent;
 
       // Find breakeven point
-      if (breakevenMonth === -1 && cumulativeCostBuying < cumulativeCostRenting) {
+      if (breakevenMonth === -1 && costOfBuying < cumulativeCostRenting) {
         breakevenMonth = month;
       }
 
@@ -153,13 +159,18 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
         principal: principalPayment,
         interest,
         balance: Math.max(0, balance),
-        cumulativeCostBuying,
+        cumulativeCostBuying: costOfBuying,
         cumulativeCostRenting,
+        monthlyPaymentNet
       });
     }
 
+    const totalBuyingCost = cumulativeInterest - cumulativePrincipal + (data.buying_cost - data.sell_price);
+
     onCalculate({
       monthlyPayment,
+      monthlyPaymentGross,
+      monthlyPaymentNet,
       totalPayments,
       totalInterest,
       loanAmount,
@@ -255,8 +266,13 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Interest Rate (%)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.1" 
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} 
+                    onChange={e => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                        field.onChange(value);
+                      }
+                    }}
                   />
                 </FormControl>
                 <FormMessage />

@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface ResultsDisplayProps {
   calculation: {
     monthlyPayment: number;
+    monthlyPaymentGross: number;
+    monthlyPaymentNet: number;
     totalPayments: number;
     totalInterest: number;
     loanAmount: number;
@@ -30,6 +32,7 @@ interface ResultsDisplayProps {
       balance: number;
       cumulativeCostBuying: number;
       cumulativeCostRenting: number;
+      monthlyPaymentNet: number;
     }>;
   };
 }
@@ -41,19 +44,21 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">€{calculation.monthlyPayment.toFixed(2)}</div>
-            <div className="text-sm text-muted-foreground">Monthly Payment</div>
+            <div className="text-sm text-muted-foreground">Base Monthly Payment</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">€{calculation.totalInterest.toFixed(2)}</div>
-            <div className="text-sm text-muted-foreground">Total Interest</div>
+            <div className="text-2xl font-bold">€{calculation.monthlyPaymentGross.toFixed(2)}</div>
+            <div className="text-sm text-muted-foreground">Gross Monthly Payment</div>
+            <div className="text-xs text-muted-foreground">(incl. maintenance)</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{calculation.breakevenMonth} months</div>
-            <div className="text-sm text-muted-foreground">Breakeven Point</div>
+            <div className="text-2xl font-bold">€{calculation.monthlyPaymentNet.toFixed(2)}</div>
+            <div className="text-sm text-muted-foreground">Net Monthly Payment</div>
+            <div className="text-xs text-muted-foreground">(after tax credit)</div>
           </CardContent>
         </Card>
       </div>
@@ -84,7 +89,7 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                 <span>€{calculation.capitalGain.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold pt-2 border-t">
-                <span>Total Cost:</span>
+                <span>Net Cost of Buying:</span>
                 <span>€{calculation.totalBuyingCost.toFixed(2)}</span>
               </div>
             </div>
@@ -96,7 +101,7 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
             <h3 className="text-lg font-semibold mb-4">Renting Costs</h3>
             <div className="space-y-2">
               <div className="flex justify-between font-bold pt-2">
-                <span>Total Rental Cost:</span>
+                <span>Total Cost of Renting:</span>
                 <span>€{calculation.totalRentalCost.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
