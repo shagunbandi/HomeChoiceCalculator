@@ -8,39 +8,47 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const mortgageSchema = z.object({
-  propertyValue: z.string().transform(Number),
-  downPayment: z.string().transform(Number),
-  interestRate: z.string().transform(Number),
-  loanTerm: z.string().transform(Number),
+  propertyValue: z.number().positive("Property value must be positive"),
+  downPayment: z.number().positive("Down payment must be positive"),
+  interestRate: z.number().positive("Interest rate must be positive"),
+  loanTerm: z.number().int().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
   name: z.string().optional(),
 });
 
 type MortgageFormData = z.infer<typeof mortgageSchema>;
 
 interface MortgageFormProps {
-  onCalculate: (result: any) => void;
+  onCalculate: (result: {
+    monthlyPayment: number;
+    totalInterest: number;
+    amortizationSchedule: Array<{
+      month: number;
+      principal: number;
+      interest: number;
+      balance: number;
+    }>;
+  }) => void;
 }
 
 export default function MortgageForm({ onCalculate }: MortgageFormProps) {
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
     defaultValues: {
-      propertyValue: "300000",
-      downPayment: "60000",
-      interestRate: "3.5",
-      loanTerm: "30",
+      propertyValue: 300000,
+      downPayment: 60000,
+      interestRate: 3.5,
+      loanTerm: 30,
       name: "",
     },
   });
 
   const calculateMutation = useMutation({
-    mutationFn: async (data: MortgageFormData) => {
+    mutationFn: async (data: MortgageFormData & { monthlyPayment: number; totalInterest: number }) => {
       const res = await apiRequest("POST", "/api/calculations", data);
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calculations"] });
-      onCalculate(data);
     },
   });
 
@@ -58,12 +66,12 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
 
     const amortizationSchedule = [];
     let balance = principal;
-    
+
     for (let month = 1; month <= numberOfPayments; month++) {
       const interest = balance * monthlyRate;
       const principalPayment = monthlyPayment - interest;
       balance -= principalPayment;
-      
+
       amortizationSchedule.push({
         month,
         principal: principalPayment,
@@ -71,6 +79,12 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
         balance: Math.max(0, balance),
       });
     }
+
+    onCalculate({
+      monthlyPayment,
+      totalInterest,
+      amortizationSchedule,
+    });
 
     calculateMutation.mutate({
       ...data,
@@ -89,7 +103,9 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
             <FormItem>
               <FormLabel>Property Value ($)</FormLabel>
               <FormControl>
-                <Input {...field} type="number" min="0" step="1000" />
+                <Input {...field} type="number" min="0" step="1000" 
+                  onChange={e => field.onChange(parseFloat(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -103,7 +119,9 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
             <FormItem>
               <FormLabel>Down Payment ($)</FormLabel>
               <FormControl>
-                <Input {...field} type="number" min="0" step="1000" />
+                <Input {...field} type="number" min="0" step="1000" 
+                  onChange={e => field.onChange(parseFloat(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -117,7 +135,9 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
             <FormItem>
               <FormLabel>Interest Rate (%)</FormLabel>
               <FormControl>
-                <Input {...field} type="number" min="0" step="0.1" />
+                <Input {...field} type="number" min="0" step="0.1" 
+                  onChange={e => field.onChange(parseFloat(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -131,7 +151,9 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
             <FormItem>
               <FormLabel>Loan Term (years)</FormLabel>
               <FormControl>
-                <Input {...field} type="number" min="1" max="30" />
+                <Input {...field} type="number" min="1" max="30" 
+                  onChange={e => field.onChange(parseFloat(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
