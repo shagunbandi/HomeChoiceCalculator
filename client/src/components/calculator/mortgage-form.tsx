@@ -9,10 +9,18 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const mortgageSchema = z.object({
-  buying_cost: z.number().positive("Property value must be positive"),
-  down_payment: z.number().min(0, "Down payment cannot be negative"),
-  sell_price: z.number().positive("Selling price must be positive"),
-  one_time_expense: z.number().min(0, "One-time expense cannot be negative"),
+  buying_cost: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, "Property value must be positive")
+    .transform(val => parseFloat(val)),
+  down_payment: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, "Down payment cannot be negative")
+    .transform(val => parseFloat(val)),
+  sell_price: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, "Selling price must be positive")
+    .transform(val => parseFloat(val)),
+  one_time_expense: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, "One-time expense cannot be negative")
+    .transform(val => parseFloat(val)),
   interest_rate: z.string()
     .refine(val => {
       const num = parseFloat(val);
@@ -21,11 +29,23 @@ const mortgageSchema = z.object({
     .refine(val => {
       return /^\d+\.\d{2}$/.test(val);
     }, "Interest rate must have exactly 2 decimal places"),
-  mortgage_tax_scheme: z.number().min(0, "Tax scheme cannot be negative").max(100, "Tax scheme cannot exceed 100%").step(0.01),
-  term_years: z.number().int().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
-  yearly_maintenance: z.number().min(0, "Yearly maintenance cannot be negative"),
-  current_rent: z.number().min(0, "Current rent cannot be negative"),
-  rental_increase: z.number().min(0, "Rental increase cannot be negative").step(0.01),
+  mortgage_tax_scheme: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 100, 
+      "Tax scheme must be between 0 and 100")
+    .transform(val => parseFloat(val)),
+  term_years: z.string()
+    .refine(val => !isNaN(parseInt(val)) && parseInt(val) > 0 && parseInt(val) <= 30, 
+      "Loan term must be between 1 and 30 years")
+    .transform(val => parseInt(val)),
+  yearly_maintenance: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, "Yearly maintenance cannot be negative")
+    .transform(val => parseFloat(val)),
+  current_rent: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, "Current rent cannot be negative")
+    .transform(val => parseFloat(val)),
+  rental_increase: z.string()
+    .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, "Rental increase cannot be negative")
+    .transform(val => parseFloat(val)),
   name: z.string().optional(),
 });
 
