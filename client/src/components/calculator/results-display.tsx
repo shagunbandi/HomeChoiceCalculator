@@ -104,11 +104,11 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Total Interest Paid</span>
-                  <span>€{selectedMonthData.interest.toFixed(2)}</span>
+                  <span>€{calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-green-600">
                   <span>Total Tax Credit (Mortgage Scheme)</span>
-                  <span>-€{(selectedMonthData.interest * (selectedMonthData.monthlyTaxCredit / selectedMonthData.interest)).toFixed(2)}</span>
+                  <span>-€{calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Total Maintenance Paid</span>
@@ -125,6 +125,16 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                 <div className="flex justify-between font-bold border-t pt-2">
                   <span>Total Cost of Buying</span>
                   <span>€{(selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense).toFixed(2)}</span>
+                </div>
+                
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <h4 className="font-medium mb-2">Analysis Conclusion</h4>
+                  <p className="text-sm">
+                    {selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense) > 0 
+                      ? `At month ${selectedMonth}, buying is cheaper than renting by €${(selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense)).toFixed(2)}`
+                      : `At month ${selectedMonth}, renting is cheaper than buying by €${((selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense) - selectedMonthData.cumulativeCostRenting).toFixed(2)}`
+                    }
+                  </p>
                 </div>
               </div>
             </div>
