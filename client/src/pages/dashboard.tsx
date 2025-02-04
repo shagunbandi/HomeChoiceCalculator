@@ -45,7 +45,7 @@ interface SavedCalculation {
   sellPrice: string;
   oneTimeExpense: string;
   interestRate: string;
-  mortgageTaxScheme: number;
+  taxCreditRate: string;
   loanTerm: number;
   yearlyMaintenance: string;
   currentRent: string;
@@ -88,7 +88,7 @@ export default function Dashboard() {
         sell_price: parseFloat(calc.sellPrice),
         one_time_expense: parseFloat(calc.oneTimeExpense),
         interest_rate: calc.interestRate,
-        mortgage_tax_scheme: calc.mortgageTaxScheme.toFixed(2),
+        mortgage_tax_scheme: parseFloat(calc.taxCreditRate || "37.00").toFixed(2),
         term_years: calc.loanTerm,
         yearly_maintenance: parseFloat(calc.yearlyMaintenance),
         current_rent: parseFloat(calc.currentRent),
