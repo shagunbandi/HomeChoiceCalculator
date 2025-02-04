@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const mortgageSchema = z.object({
   buying_cost: z.number().positive("Property value must be positive"),
@@ -57,6 +57,7 @@ interface MortgageFormProps {
     totalBuyingCost: number;
     totalRentalCost: number;
     breakevenMonth: number;
+    oneTimeExpense: number;
     amortizationSchedule: Array<{
       month: number;
       principal: number;
@@ -70,10 +71,13 @@ interface MortgageFormProps {
       monthlyTaxCredit: number;
     }>;
   }) => void;
+  selectedCalculationId?: number | null;
+  onLoadCalculation?: (calc: any) => any;
 }
 
-export default function MortgageForm({ onCalculate }: MortgageFormProps) {
-  const [selectedCalculationId, setSelectedCalculationId] = useState<number | null>(null);
+export default function MortgageForm({ onCalculate, selectedCalculationId, onLoadCalculation }: MortgageFormProps) {
+  const [selectedCalculationIdState, setSelectedCalculationIdState] = useState<number | null>(null);
+
 
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
@@ -110,17 +114,30 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
     queryKey: ["/api/calculations"],
   });
 
+  // Watch for selectedCalculationId changes
+  useEffect(() => {
+    if (selectedCalculationId && savedCalculations) {
+      const savedCalc = savedCalculations.find(calc => calc.id === selectedCalculationId);
+      if (savedCalc && onLoadCalculation) {
+        const values = onLoadCalculation(savedCalc);
+        if (values) {
+          form.reset(values);
+        }
+      }
+    }
+  }, [selectedCalculationId, savedCalculations, form, onLoadCalculation]);
+
   const calculateMutation = useMutation({
     mutationFn: async (data: MortgageFormData & {
       monthlyPayment: number;
       totalInterest: number;
       breakevenMonth: number;
     }) => {
-      const endpoint = selectedCalculationId
-        ? `/api/calculations/${selectedCalculationId}`
+      const endpoint = selectedCalculationIdState
+        ? `/api/calculations/${selectedCalculationIdState}`
         : "/api/calculations";
 
-      const method = selectedCalculationId ? "PATCH" : "POST";
+      const method = selectedCalculationIdState ? "PATCH" : "POST";
 
       const res = await apiRequest(method, endpoint, {
         buyingCost: data.buying_cost,
@@ -260,22 +277,9 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
                   onValueChange={(value) => {
                     const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
                     if (savedCalc) {
-                      setSelectedCalculationId(savedCalc.id);
-                      form.reset({
-                        buying_cost: parseFloat(savedCalc.buyingCost),
-                        down_payment: parseFloat(savedCalc.downPayment),
-                        sell_price: parseFloat(savedCalc.sellPrice),
-                        one_time_expense: parseFloat(savedCalc.oneTimeExpense),
-                        interest_rate: savedCalc.interestRate,
-                        mortgage_tax_scheme: savedCalc.mortgageTaxScheme.toString(),
-                        term_years: savedCalc.loanTerm,
-                        yearly_maintenance: parseFloat(savedCalc.yearlyMaintenance),
-                        current_rent: parseFloat(savedCalc.currentRent),
-                        rental_increase: parseFloat(savedCalc.rentalIncrease),
-                        name: savedCalc.name || "",
-                      });
+                      setSelectedCalculationIdState(savedCalc.id);
                     } else {
-                      setSelectedCalculationId(null);
+                      setSelectedCalculationIdState(null);
                     }
                   }}
                 >
@@ -485,7 +489,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
         />
 
         <Button type="submit" className="w-full" disabled={calculateMutation.isPending}>
-          {selectedCalculationId ? 'Update Calculation' : 'Calculate'}
+          {selectedCalculationIdState ? 'Update Calculation' : 'Calculate'}
         </Button>
       </form>
     </Form>
