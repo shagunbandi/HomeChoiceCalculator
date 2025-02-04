@@ -71,7 +71,7 @@ export default function Dashboard() {
         sell_price: parseFloat(calc.sellPrice),
         one_time_expense: parseFloat(calc.oneTimeExpense),
         interest_rate: calc.interestRate,
-        mortgage_tax_scheme: calc.mortgageTaxScheme.toString(),
+        mortgage_tax_scheme: typeof calc.mortgageTaxScheme === 'number' ? calc.mortgageTaxScheme.toFixed(2) : "37.00",
         term_years: calc.loanTerm,
         yearly_maintenance: parseFloat(calc.yearlyMaintenance),
         current_rent: parseFloat(calc.currentRent),
@@ -124,7 +124,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              {savedCalculations.map((calc) => (
+              {savedCalculations?.map((calc) => (
                 <Button
                   key={calc.id}
                   variant="outline"
@@ -137,13 +137,13 @@ export default function Dashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Monthly Payment</p>
                         <p className="font-medium">
-                          ${parseFloat(calc.monthlyPayment).toFixed(2)}
+                          €{parseFloat(calc.monthlyPayment).toFixed(2)}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Total Interest</p>
                         <p className="font-medium">
-                          ${parseFloat(calc.totalInterest).toFixed(2)}
+                          €{parseFloat(calc.totalInterest).toFixed(2)}
                         </p>
                       </div>
                       <div>
