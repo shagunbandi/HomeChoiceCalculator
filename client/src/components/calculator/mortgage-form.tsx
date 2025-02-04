@@ -43,6 +43,22 @@ const mortgageSchema = z.object({
 
 type MortgageFormData = z.infer<typeof mortgageSchema>;
 
+interface SavedCalculation {
+    id: number;
+    userId: number;
+    buyingCost: string;
+    downPayment: string;
+    sellPrice: string;
+    oneTimeExpense: string;
+    interestRate: string;
+    mortgageTaxScheme: number;
+    loanTerm: number;
+    yearlyMaintenance: string;
+    currentRent: string;
+    rentalIncrease: string;
+    name?: string;
+  }
+
 interface MortgageFormProps {
   onCalculate: (result: {
     monthlyPayment: number;
@@ -72,7 +88,7 @@ interface MortgageFormProps {
     }>;
   }) => void;
   selectedCalculationId?: number | null;
-  onLoadCalculation?: (calc: any) => any;
+  onLoadCalculation?: (calc: SavedCalculation) => MortgageFormData | undefined;
 }
 
 export default function MortgageForm({ onCalculate, selectedCalculationId, onLoadCalculation }: MortgageFormProps) {
@@ -99,25 +115,11 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
     },
   });
 
-  const { data: savedCalculations } = useQuery<Array<{
-    id: number;
-    userId: number;
-    buyingCost: string;
-    downPayment: string;
-    sellPrice: string;
-    oneTimeExpense: string;
-    interestRate: string;
-    mortgageTaxScheme: number;
-    loanTerm: number;
-    yearlyMaintenance: string;
-    currentRent: string;
-    rentalIncrease: string;
-    name?: string;
-  }>>({
+  const { data: savedCalculations } = useQuery<SavedCalculation[]>({
     queryKey: ["/api/calculations"],
   });
 
-  // Watch for selectedCalculationId changes
+  // Single effect to handle form value loading
   useEffect(() => {
     if (selectedCalculationId && savedCalculations) {
       const savedCalc = savedCalculations.find(calc => calc.id === selectedCalculationId);
@@ -282,12 +284,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
                     const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
                     if (savedCalc) {
                       setSelectedCalculationIdState(savedCalc.id);
-                      if (onLoadCalculation) {
-                        const values = onLoadCalculation(savedCalc);
-                        if (values) {
-                          form.reset(values);
-                        }
-                      }
                     } else {
                       setSelectedCalculationIdState(null);
                     }

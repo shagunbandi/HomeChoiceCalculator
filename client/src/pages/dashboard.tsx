@@ -56,9 +56,7 @@ interface SavedCalculation {
 export default function Dashboard() {
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
-  const [currentCalculation, setCurrentCalculation] = useState<CalculationResult | null>(
-    null
-  );
+  const [currentCalculation, setCurrentCalculation] = useState<CalculationResult | null>(null);
   const [selectedCalculationId, setSelectedCalculationId] = useState<number | null>(null);
 
   const { data: savedCalculations } = useQuery<SavedCalculation[]>({
@@ -67,15 +65,6 @@ export default function Dashboard() {
 
   const handleLoadCalculation = (calc: SavedCalculation) => {
     if (calc) {
-      setSelectedCalculationId(calc.id);
-      // Scroll form into view
-      formRef.current?.scrollIntoView({ behavior: 'smooth' });
-      // Show toast notification
-      toast({
-        title: "Calculation Loaded",
-        description: `Loaded ${calc.name || "Unnamed Calculation"}`,
-      });
-
       const values = {
         buying_cost: parseFloat(calc.buyingCost),
         down_payment: parseFloat(calc.downPayment),
@@ -92,6 +81,15 @@ export default function Dashboard() {
       return values;
     }
     return null;
+  };
+
+  const handleCardClick = (calc: SavedCalculation) => {
+    setSelectedCalculationId(calc.id);
+    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+    toast({
+      title: "Calculation Loaded",
+      description: `Loaded ${calc.name || "Unnamed Calculation"}`,
+    });
   };
 
   return (
@@ -140,7 +138,7 @@ export default function Dashboard() {
                   key={calc.id}
                   variant="outline"
                   className="w-full text-left h-auto p-4"
-                  onClick={() => setSelectedCalculationId(calc.id)}
+                  onClick={() => handleCardClick(calc)}
                 >
                   <div>
                     <p className="font-medium">{calc.name || "Unnamed Calculation"}</p>
