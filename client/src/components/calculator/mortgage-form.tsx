@@ -93,11 +93,11 @@ interface MortgageFormProps {
   onCalculationCreated?: (id: number) => void;
 }
 
-export default function MortgageForm({ 
-  onCalculate, 
-  selectedCalculationId, 
+export default function MortgageForm({
+  onCalculate,
+  selectedCalculationId,
   onLoadCalculation,
-  onCalculationCreated 
+  onCalculationCreated
 }: MortgageFormProps) {
   const { toast } = useToast();
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -179,7 +179,6 @@ export default function MortgageForm({
           description: "Your changes have been saved successfully.",
         });
       }
-      setIsCreatingNew(false);
     },
   });
 
@@ -259,7 +258,7 @@ export default function MortgageForm({
     const maintenanceTotal = data.yearly_maintenance * data.term_years;
     const capitalGain = data.sell_price - data.buying_cost;
 
-    onCalculate({
+    const calculationResult = {
       monthlyPayment,
       monthlyPaymentGross,
       monthlyPaymentNet,
@@ -274,14 +273,30 @@ export default function MortgageForm({
       breakevenMonth,
       oneTimeExpense: data.one_time_expense,
       amortizationSchedule,
-    });
+    };
 
-    calculateMutation.mutate({
-      ...data,
-      monthlyPayment,
-      totalInterest,
-      breakevenMonth,
-    });
+    // Call onCalculate before the mutation to update the UI immediately
+    onCalculate(calculationResult);
+
+    try {
+      const savedCalculation = await calculateMutation.mutateAsync({
+        ...data,
+        monthlyPayment,
+        totalInterest,
+        breakevenMonth,
+      });
+
+      // If this is a new calculation being created, notify the parent
+      if (isCreatingNew) {
+        onCalculationCreated?.(savedCalculation.id);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save calculation. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -511,24 +526,24 @@ export default function MortgageForm({
         <div className="flex gap-4 justify-end">
           {selectedCalculationId ? (
             <>
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 variant="outline"
                 onClick={() => setIsCreatingNew(true)}
                 disabled={calculateMutation.isPending}
               >
                 Save as New
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={calculateMutation.isPending || isCreatingNew}
               >
                 Update Calculation
               </Button>
             </>
           ) : (
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full"
               disabled={calculateMutation.isPending}
             >
