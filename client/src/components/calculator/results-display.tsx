@@ -128,7 +128,7 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
                     selectedMonthData.cumulativeMaintenance + 
-                    calculation.oneTimeExpense + 
+                    calculation.oneTimeExpense -
                     calculation.capitalGain
                   ).toFixed(2)}</span>
                 </div>
@@ -150,14 +150,14 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                   calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
                   calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
                   selectedMonthData.cumulativeMaintenance + 
-                  calculation.oneTimeExpense + 
+                  calculation.oneTimeExpense -
                   calculation.capitalGain
                 ) > 0 ? "text-green-600" : "text-red-600"}>
                   €{(selectedMonthData.cumulativeCostRenting - (
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
                     selectedMonthData.cumulativeMaintenance + 
-                    calculation.oneTimeExpense + 
+                    calculation.oneTimeExpense -
                     calculation.capitalGain
                   )).toFixed(2)}
                 </span>
