@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useEffect } from 'react';
+import { useToast } from "@/hooks/use-toast";
 
 const mortgageSchema = z.object({
   buying_cost: z.coerce.number().positive("Property value must be positive"),
@@ -89,9 +90,18 @@ interface MortgageFormProps {
   }) => void;
   selectedCalculationId?: number | null;
   onLoadCalculation?: (calc: SavedCalculation) => MortgageFormData | undefined;
+  onCalculationCreated?: (id: number) => void;
 }
 
-export default function MortgageForm({ onCalculate, selectedCalculationId, onLoadCalculation }: MortgageFormProps) {
+export default function MortgageForm({ 
+  onCalculate, 
+  selectedCalculationId, 
+  onLoadCalculation,
+  onCalculationCreated 
+}: MortgageFormProps) {
+  const { toast } = useToast();
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
     defaultValues: {
@@ -131,11 +141,11 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
       totalInterest: number;
       breakevenMonth: number;
     }) => {
-      const endpoint = selectedCalculationId
+      const endpoint = (!isCreatingNew && selectedCalculationId)
         ? `/api/calculations/${selectedCalculationId}`
         : "/api/calculations";
 
-      const method = selectedCalculationId ? "PATCH" : "POST";
+      const method = (!isCreatingNew && selectedCalculationId) ? "PATCH" : "POST";
 
       const res = await apiRequest(method, endpoint, {
         buyingCost: data.buying_cost,
@@ -155,12 +165,25 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/calculations"] });
+      if (isCreatingNew) {
+        onCalculationCreated?.(data.id);
+        toast({
+          title: "New Calculation Created",
+          description: "Your new calculation has been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Calculation Updated",
+          description: "Your changes have been saved successfully.",
+        });
+      }
+      setIsCreatingNew(false);
     },
   });
 
-  const onSubmit = (data: MortgageFormData) => {
+  const onSubmit = async (data: MortgageFormData) => {
     const loanAmount = data.buying_cost - data.down_payment;
     const monthlyRate = parseFloat(data.interest_rate) / 100 / 12;
     const numberOfPayments = data.term_years * 12;
@@ -319,7 +342,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="down_payment"
@@ -335,7 +357,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="sell_price"
@@ -351,7 +372,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="one_time_expense"
@@ -367,7 +387,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="interest_rate"
@@ -388,7 +407,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="mortgage_tax_scheme"
@@ -414,7 +432,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="term_years"
@@ -430,7 +447,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="yearly_maintenance"
@@ -446,7 +462,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="current_rent"
@@ -462,7 +477,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="rental_increase"
@@ -494,9 +508,34 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={calculateMutation.isPending}>
-          {selectedCalculationId ? 'Update Calculation' : 'Calculate'}
-        </Button>
+        <div className="flex gap-4 justify-end">
+          {selectedCalculationId ? (
+            <>
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => setIsCreatingNew(true)}
+                disabled={calculateMutation.isPending}
+              >
+                Save as New
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={calculateMutation.isPending || isCreatingNew}
+              >
+                Update Calculation
+              </Button>
+            </>
+          ) : (
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={calculateMutation.isPending}
+            >
+              Calculate & Save
+            </Button>
+          )}
+        </div>
       </form>
     </Form>
   );

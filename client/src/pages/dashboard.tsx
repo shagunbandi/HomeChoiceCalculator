@@ -73,6 +73,9 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calculations"] });
+      if (selectedCalculationId) {
+        setSelectedCalculationId(null);
+      }
       toast({
         title: "Calculation Deleted",
         description: "The calculation has been deleted successfully.",
@@ -108,6 +111,11 @@ export default function Dashboard() {
     });
   };
 
+  const handleCalculationCreated = (id: number) => {
+    setSelectedCalculationId(id);
+    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const handleDelete = (e: React.MouseEvent, calc: SavedCalculation) => {
     e.stopPropagation();
     deleteCalculation.mutate(calc.id);
@@ -120,13 +128,16 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-2 gap-8" ref={formRef}>
         <Card>
           <CardHeader>
-            <CardTitle>Calculate Mortgage</CardTitle>
+            <CardTitle>
+              {selectedCalculationId ? 'Edit Calculation' : 'New Calculation'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <MortgageForm 
               onCalculate={setCurrentCalculation} 
               selectedCalculationId={selectedCalculationId}
               onLoadCalculation={handleLoadCalculation}
+              onCalculationCreated={handleCalculationCreated}
             />
           </CardContent>
         </Card>
