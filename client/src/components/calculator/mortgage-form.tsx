@@ -158,7 +158,7 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
         monthlyPayment: data.monthlyPayment,
         totalInterest: data.totalInterest,
         breakevenMonth: data.breakevenMonth,
-        name: data.name
+        name: data.name || undefined
       });
       return res.json();
     },
