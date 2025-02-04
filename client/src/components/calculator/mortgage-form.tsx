@@ -10,18 +10,19 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useEffect } from 'react';
 
 const mortgageSchema = z.object({
-  buying_cost: z.number().positive("Property value must be positive"),
-  down_payment: z.number().min(0, "Down payment cannot be negative"),
-  sell_price: z.number().positive("Selling price must be positive"),
-  one_time_expense: z.number().min(0, "One-time expense cannot be negative"),
+  buying_cost: z.coerce.number().positive("Property value must be positive"),
+  down_payment: z.coerce.number().min(0, "Down payment cannot be negative"),
+  sell_price: z.coerce.number().positive("Selling price must be positive"),
+  one_time_expense: z.coerce.number().min(0, "One-time expense cannot be negative"),
   interest_rate: z.string()
     .refine(val => {
+      if (val === '') return false;
       const num = parseFloat(val);
       return !isNaN(num) && num > 0;
     }, "Interest rate must be a positive number")
     .refine(val => {
-      return /^\d+\.\d{2}$/.test(val);
-    }, "Interest rate must have exactly 2 decimal places"),
+      return /^\d+(\.\d{1,2})?$/.test(val);
+    }, "Interest rate must have at most 2 decimal places"),
   mortgage_tax_scheme: z.string()
     .refine(val => {
       if (val === '') return false;
@@ -29,10 +30,10 @@ const mortgageSchema = z.object({
       return !isNaN(num) && num >= 0 && num <= 100;
     }, "Tax scheme must be between 0 and 100")
     .transform(val => parseFloat(val)),
-  term_years: z.number().int().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
-  yearly_maintenance: z.number().min(0, "Yearly maintenance cannot be negative"),
-  current_rent: z.number().min(0, "Current rent cannot be negative"),
-  rental_increase: z.number().min(0, "Rental increase cannot be negative").step(0.01),
+  term_years: z.coerce.number().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
+  yearly_maintenance: z.coerce.number().min(0, "Yearly maintenance cannot be negative"),
+  current_rent: z.coerce.number().min(0, "Current rent cannot be negative"),
+  rental_increase: z.coerce.number().min(0, "Rental increase cannot be negative"),
   name: z.string().optional(),
 });
 
@@ -112,7 +113,6 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
     queryKey: ["/api/calculations"],
   });
 
-  // Handle selected calculation changes
   useEffect(() => {
     if (selectedCalculationId && savedCalculations) {
       const savedCalc = savedCalculations.find(calc => calc.id === selectedCalculationId);
@@ -311,8 +311,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Property Purchase Price (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="1000"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="0" step="0.01"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -327,8 +327,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Down Payment (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="1000"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="0" step="0.01"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -343,8 +343,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Expected Selling Price (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="1000"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="0" step="0.01"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -359,8 +359,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>One-time Expenses (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="100"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="0" step="0.01"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -398,6 +398,10 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
                 <FormControl>
                   <Input
                     {...field}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
                     onChange={(e) => {
                       const value = e.target.value;
                       if (value === '' || /^\d*\.?\d*$/.test(value)) {
@@ -418,8 +422,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Loan Term (years)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="1" max="30"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="1" max="30" step="1"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -434,8 +438,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Yearly Maintenance (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="100"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="0" step="0.01"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -450,8 +454,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Current Monthly Rent (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="50"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="0" step="0.01"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -466,8 +470,8 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Annual Rental Increase (%)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.1"
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input {...field} type="number" min="0" step="0.01"
+                    onChange={e => field.onChange(e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
