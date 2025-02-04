@@ -44,20 +44,24 @@ const mortgageSchema = z.object({
 type MortgageFormData = z.infer<typeof mortgageSchema>;
 
 interface SavedCalculation {
-    id: number;
-    userId: number;
-    buyingCost: string;
-    downPayment: string;
-    sellPrice: string;
-    oneTimeExpense: string;
-    interestRate: string;
-    mortgageTaxScheme: number;
-    loanTerm: number;
-    yearlyMaintenance: string;
-    currentRent: string;
-    rentalIncrease: string;
-    name?: string;
-  }
+  id: number;
+  userId: number;
+  buyingCost: string;
+  downPayment: string;
+  sellPrice: string;
+  oneTimeExpense: string;
+  interestRate: string;
+  mortgageTaxScheme: number;
+  loanTerm: number;
+  yearlyMaintenance: string;
+  currentRent: string;
+  rentalIncrease: string;
+  monthlyPayment: string;
+  totalInterest: string;
+  name?: string;
+  createdAt: string;
+  modifiedAt: string;
+}
 
 interface MortgageFormProps {
   onCalculate: (result: {
@@ -92,12 +96,6 @@ interface MortgageFormProps {
 }
 
 export default function MortgageForm({ onCalculate, selectedCalculationId, onLoadCalculation }: MortgageFormProps) {
-  const [selectedCalculationIdState, setSelectedCalculationIdState] = useState<number | null>(null);
-
-  useEffect(() => {
-    setSelectedCalculationIdState(selectedCalculationId);
-  }, [selectedCalculationId]);
-
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
     defaultValues: {
@@ -119,7 +117,7 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
     queryKey: ["/api/calculations"],
   });
 
-  // Single effect to handle form value loading
+  // Handle selected calculation changes
   useEffect(() => {
     if (selectedCalculationId && savedCalculations) {
       const savedCalc = savedCalculations.find(calc => calc.id === selectedCalculationId);
@@ -138,11 +136,11 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
       totalInterest: number;
       breakevenMonth: number;
     }) => {
-      const endpoint = selectedCalculationIdState
-        ? `/api/calculations/${selectedCalculationIdState}`
+      const endpoint = selectedCalculationId
+        ? `/api/calculations/${selectedCalculationId}`
         : "/api/calculations";
 
-      const method = selectedCalculationIdState ? "PATCH" : "POST";
+      const method = selectedCalculationId ? "PATCH" : "POST";
 
       const res = await apiRequest(method, endpoint, {
         buyingCost: data.buying_cost,
@@ -279,13 +277,16 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Load Saved Calculation</FormLabel>
                 <Select
-                  value={selectedCalculationIdState?.toString() || ""}
+                  value={selectedCalculationId?.toString() || ""}
                   onValueChange={(value) => {
-                    const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
-                    if (savedCalc) {
-                      setSelectedCalculationIdState(savedCalc.id);
-                    } else {
-                      setSelectedCalculationIdState(null);
+                    if (value) {
+                      const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
+                      if (savedCalc && onLoadCalculation) {
+                        const values = onLoadCalculation(savedCalc);
+                        if (values) {
+                          form.reset(values);
+                        }
+                      }
                     }
                   }}
                 >
@@ -495,7 +496,7 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
         />
 
         <Button type="submit" className="w-full" disabled={calculateMutation.isPending}>
-          {selectedCalculationIdState ? 'Update Calculation' : 'Calculate'}
+          {selectedCalculationId ? 'Update Calculation' : 'Calculate'}
         </Button>
       </form>
     </Form>
