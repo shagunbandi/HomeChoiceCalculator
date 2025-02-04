@@ -27,7 +27,7 @@ interface ResultsDisplayProps {
     totalBuyingCost: number;
     totalRentalCost: number;
     breakevenMonth: number;
-    oneTimeExpense: number; // Added oneTimeExpense
+    oneTimeExpense: number;
     amortizationSchedule: Array<{
       month: number;
       principal: number;
@@ -44,7 +44,7 @@ interface ResultsDisplayProps {
 }
 
 export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
-  const [selectedMonth, setSelectedMonth] = useState(calculation.breakevenMonth); //Set default month
+  const [selectedMonth, setSelectedMonth] = useState(calculation.breakevenMonth);
   const selectedMonthData = calculation.amortizationSchedule[selectedMonth - 1];
 
   return (
@@ -118,9 +118,9 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                   <span>One-time Expenses</span>
                   <span>€{calculation.oneTimeExpense.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className={`flex justify-between ${calculation.capitalGain > 0 ? 'text-green-600' : 'text-red-600'}`}>
                   <span>Property Value Change</span>
-                  <span>€{(calculation.capitalGain).toFixed(2)}</span>
+                  <span>{calculation.capitalGain > 0 ? '-' : '+'}€{Math.abs(calculation.capitalGain).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold border-t pt-2">
                   <span>Total Cost of Buying</span>
@@ -128,8 +128,8 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
                     selectedMonthData.cumulativeMaintenance + 
-                    calculation.oneTimeExpense -
-                    calculation.capitalGain
+                    calculation.oneTimeExpense +
+                    (calculation.capitalGain > 0 ? -calculation.capitalGain : Math.abs(calculation.capitalGain))
                   ).toFixed(2)}</span>
                 </div>
               </div>
@@ -150,27 +150,45 @@ export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
                   calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
                   calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
                   selectedMonthData.cumulativeMaintenance + 
-                  calculation.oneTimeExpense -
-                  calculation.capitalGain
+                  calculation.oneTimeExpense +
+                  (calculation.capitalGain > 0 ? -calculation.capitalGain : Math.abs(calculation.capitalGain))
                 ) > 0 ? "text-green-600" : "text-red-600"}>
                   €{(selectedMonthData.cumulativeCostRenting - (
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
                     calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
                     selectedMonthData.cumulativeMaintenance + 
-                    calculation.oneTimeExpense -
-                    calculation.capitalGain
+                    calculation.oneTimeExpense +
+                    (calculation.capitalGain > 0 ? -calculation.capitalGain : Math.abs(calculation.capitalGain))
                   )).toFixed(2)}
                 </span>
               </div>
               <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Analysis Conclusion</h4>
-                  <p className="text-sm">
-                    {selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense) > 0 
-                      ? `At month ${selectedMonth}, buying is cheaper than renting by €${(selectedMonthData.cumulativeCostRenting - (selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense)).toFixed(2)}`
-                      : `At month ${selectedMonth}, renting is cheaper than buying by €${((selectedMonthData.cumulativeCostBuying + calculation.oneTimeExpense) - selectedMonthData.cumulativeCostRenting).toFixed(2)}`
-                    }
-                  </p>
-                </div>
+                <h4 className="font-medium mb-2">Analysis Conclusion</h4>
+                <p className="text-sm">
+                  {selectedMonthData.cumulativeCostRenting - (
+                    calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
+                    calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
+                    selectedMonthData.cumulativeMaintenance + 
+                    calculation.oneTimeExpense +
+                    (calculation.capitalGain > 0 ? -calculation.capitalGain : Math.abs(calculation.capitalGain))
+                  ) > 0 
+                    ? `At month ${selectedMonth}, buying is cheaper than renting by €${(selectedMonthData.cumulativeCostRenting - (
+                      calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
+                      calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
+                      selectedMonthData.cumulativeMaintenance + 
+                      calculation.oneTimeExpense +
+                      (calculation.capitalGain > 0 ? -calculation.capitalGain : Math.abs(calculation.capitalGain))
+                    )).toFixed(2)}`
+                    : `At month ${selectedMonth}, renting is cheaper than buying by €${((
+                      calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.interest, 0) - 
+                      calculation.amortizationSchedule.slice(0, selectedMonth).reduce((sum, month) => sum + month.monthlyTaxCredit, 0) + 
+                      selectedMonthData.cumulativeMaintenance + 
+                      calculation.oneTimeExpense +
+                      (calculation.capitalGain > 0 ? -calculation.capitalGain : Math.abs(calculation.capitalGain))
+                    ) - selectedMonthData.cumulativeCostRenting).toFixed(2)}`
+                  }
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>

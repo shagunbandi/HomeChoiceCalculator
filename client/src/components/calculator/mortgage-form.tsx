@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from 'react';
 
 const mortgageSchema = z.object({
   buying_cost: z.number().positive("Property value must be positive"),
@@ -21,7 +22,18 @@ const mortgageSchema = z.object({
     .refine(val => {
       return /^\d+\.\d{2}$/.test(val);
     }, "Interest rate must have exactly 2 decimal places"),
-  mortgage_tax_scheme: z.number().min(0, "Tax scheme cannot be negative").max(100, "Tax scheme cannot exceed 100%").step(0.01),
+  mortgage_tax_scheme: z.string()
+    .refine(val => {
+      if (val.endsWith('.')) return true;
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 100;
+    }, "Tax scheme must be between 0 and 100")
+    .transform(val => {
+      if (val.endsWith('.')) {
+        return parseFloat(val + '0');
+      }
+      return parseFloat(val);
+    }),
   term_years: z.number().int().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
   yearly_maintenance: z.number().min(0, "Yearly maintenance cannot be negative"),
   current_rent: z.number().min(0, "Current rent cannot be negative"),
@@ -61,6 +73,8 @@ interface MortgageFormProps {
 }
 
 export default function MortgageForm({ onCalculate }: MortgageFormProps) {
+  const [selectedCalculationId, setSelectedCalculationId] = useState<number | null>(null);
+
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
     defaultValues: {
@@ -69,7 +83,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       sell_price: 350000,
       one_time_expense: 5000,
       interest_rate: "3.50",
-      mortgage_tax_scheme: 37,
+      mortgage_tax_scheme: "37.00",
       term_years: 30,
       yearly_maintenance: 2400,
       current_rent: 1500,
@@ -97,12 +111,18 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
   });
 
   const calculateMutation = useMutation({
-    mutationFn: async (data: MortgageFormData & { 
+    mutationFn: async (data: MortgageFormData & {
       monthlyPayment: number;
       totalInterest: number;
       breakevenMonth: number;
     }) => {
-      const res = await apiRequest("POST", "/api/calculations", {
+      const endpoint = selectedCalculationId
+        ? `/api/calculations/${selectedCalculationId}`
+        : "/api/calculations";
+
+      const method = selectedCalculationId ? "PATCH" : "POST";
+
+      const res = await apiRequest(method, endpoint, {
         buyingCost: data.buying_cost,
         downPayment: data.down_payment,
         sellPrice: data.sell_price,
@@ -166,7 +186,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       cumulativeMaintenance += monthlyMaintenance;
 
       // Cost of buying calculation for this month
-      const costOfBuying = cumulativeInterest - cumulativeTaxCredit + 
+      const costOfBuying = cumulativeInterest - cumulativeTaxCredit +
         cumulativeMaintenance + data.one_time_expense + (data.buying_cost - data.sell_price);
 
       // Update rent with annual increase
@@ -194,7 +214,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       });
     }
 
-    const totalBuyingCost = cumulativeInterest - cumulativeTaxCredit + 
+    const totalBuyingCost = cumulativeInterest - cumulativeTaxCredit +
       cumulativeMaintenance + (data.buying_cost - data.sell_price);
 
     const taxCredit = cumulativeInterest * (data.mortgage_tax_scheme / 100);
@@ -240,19 +260,22 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
                   onValueChange={(value) => {
                     const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
                     if (savedCalc) {
+                      setSelectedCalculationId(savedCalc.id);
                       form.reset({
                         buying_cost: parseFloat(savedCalc.buyingCost),
                         down_payment: parseFloat(savedCalc.downPayment),
                         sell_price: parseFloat(savedCalc.sellPrice),
                         one_time_expense: parseFloat(savedCalc.oneTimeExpense),
                         interest_rate: savedCalc.interestRate,
-                        mortgage_tax_scheme: savedCalc.mortgageTaxScheme,
+                        mortgage_tax_scheme: savedCalc.mortgageTaxScheme.toString(),
                         term_years: savedCalc.loanTerm,
                         yearly_maintenance: parseFloat(savedCalc.yearlyMaintenance),
                         current_rent: parseFloat(savedCalc.currentRent),
                         rental_increase: parseFloat(savedCalc.rentalIncrease),
                         name: savedCalc.name || "",
                       });
+                    } else {
+                      setSelectedCalculationId(null);
                     }
                   }}
                 >
@@ -282,7 +305,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Property Purchase Price (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="1000" 
+                  <Input {...field} type="number" min="0" step="1000"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -298,7 +321,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Down Payment (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="1000" 
+                  <Input {...field} type="number" min="0" step="1000"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -314,7 +337,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Expected Selling Price (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="1000" 
+                  <Input {...field} type="number" min="0" step="1000"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -330,7 +353,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>One-time Expenses (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="100" 
+                  <Input {...field} type="number" min="0" step="100"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -346,7 +369,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Interest Rate (%)</FormLabel>
                 <FormControl>
-                  <Input {...field} 
+                  <Input {...field}
                     onChange={e => {
                       const value = e.target.value;
                       if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
@@ -367,8 +390,14 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Mortgage Tax Scheme (%)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" max="100" step="0.1" 
-                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                  <Input
+                    {...field}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        field.onChange(value);
+                      }
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -383,7 +412,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Loan Term (years)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="1" max="30" 
+                  <Input {...field} type="number" min="1" max="30"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -399,7 +428,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Yearly Maintenance (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="100" 
+                  <Input {...field} type="number" min="0" step="100"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -415,7 +444,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Current Monthly Rent (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="50" 
+                  <Input {...field} type="number" min="0" step="50"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -431,7 +460,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
               <FormItem>
                 <FormLabel>Annual Rental Increase (%)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.1" 
+                  <Input {...field} type="number" min="0" step="0.1"
                     onChange={e => field.onChange(parseFloat(e.target.value))}
                   />
                 </FormControl>
@@ -456,7 +485,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
         />
 
         <Button type="submit" className="w-full" disabled={calculateMutation.isPending}>
-          Calculate
+          {selectedCalculationId ? 'Update Calculation' : 'Calculate'}
         </Button>
       </form>
     </Form>
