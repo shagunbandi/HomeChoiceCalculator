@@ -26,6 +26,7 @@ export const mortgageCalculations = pgTable("mortgage_calculations", {
   totalInterest: decimal("total_interest").notNull(),
   breakevenMonth: integer("breakeven_month").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  modifiedAt: timestamp("modified_at").defaultNow(),
   name: text("name"),
 });
 

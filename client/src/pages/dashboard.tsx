@@ -1,10 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import MortgageForm from "@/components/calculator/mortgage-form";
 import ResultsDisplay from "@/components/calculator/results-display";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
+import { Trash2 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type CalculationResult = {
   monthlyPayment: number;
@@ -51,6 +54,7 @@ interface SavedCalculation {
   totalInterest: string;
   name?: string;
   createdAt: string;
+  modifiedAt: string;
 }
 
 export default function Dashboard() {
@@ -61,6 +65,19 @@ export default function Dashboard() {
 
   const { data: savedCalculations } = useQuery<SavedCalculation[]>({
     queryKey: ["/api/calculations"],
+  });
+
+  const deleteCalculation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/calculations/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calculations"] });
+      toast({
+        title: "Calculation Deleted",
+        description: "The calculation has been deleted successfully.",
+      });
+    },
   });
 
   const handleLoadCalculation = (calc: SavedCalculation) => {
@@ -90,6 +107,11 @@ export default function Dashboard() {
       title: "Calculation Loaded",
       description: `Loaded ${calc.name || "Unnamed Calculation"}`,
     });
+  };
+
+  const handleDelete = (e: React.MouseEvent, calc: SavedCalculation) => {
+    e.stopPropagation();
+    deleteCalculation.mutate(calc.id);
   };
 
   return (
@@ -134,34 +156,56 @@ export default function Dashboard() {
           <CardContent>
             <div className="grid gap-4">
               {savedCalculations?.map((calc) => (
-                <Button
+                <div
                   key={calc.id}
-                  variant="outline"
-                  className="w-full text-left h-auto p-4"
-                  onClick={() => handleCardClick(calc)}
+                  className="relative"
                 >
-                  <div>
-                    <p className="font-medium">{calc.name || "Unnamed Calculation"}</p>
-                    <div className="grid grid-cols-3 gap-4 mt-2">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Monthly Payment</p>
-                        <p className="font-medium">
-                          €{parseFloat(calc.monthlyPayment).toFixed(2)}
-                        </p>
+                  <Button
+                    variant="outline"
+                    className="w-full text-left h-auto p-4"
+                    onClick={() => handleCardClick(calc)}
+                  >
+                    <div className="w-full">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="font-medium">{calc.name || "Unnamed Calculation"}</p>
+                        <div className="text-sm text-muted-foreground">
+                          Created {formatDistanceToNow(new Date(calc.createdAt))} ago
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Interest</p>
-                        <p className="font-medium">
-                          €{parseFloat(calc.totalInterest).toFixed(2)}
-                        </p>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Monthly Payment</p>
+                          <p className="font-medium">
+                            €{parseFloat(calc.monthlyPayment).toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Interest</p>
+                          <p className="font-medium">
+                            €{parseFloat(calc.totalInterest).toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Loan Term</p>
+                          <p className="font-medium">{calc.loanTerm} years</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Loan Term</p>
-                        <p className="font-medium">{calc.loanTerm} years</p>
-                      </div>
+                      {calc.modifiedAt !== calc.createdAt && (
+                        <div className="text-sm text-muted-foreground mt-2">
+                          Last modified {formatDistanceToNow(new Date(calc.modifiedAt))} ago
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </Button>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-2 h-8 w-8"
+                    onClick={(e) => handleDelete(e, calc)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
             </div>
           </CardContent>
