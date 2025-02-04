@@ -78,6 +78,9 @@ interface MortgageFormProps {
 export default function MortgageForm({ onCalculate, selectedCalculationId, onLoadCalculation }: MortgageFormProps) {
   const [selectedCalculationIdState, setSelectedCalculationIdState] = useState<number | null>(null);
 
+  useEffect(() => {
+    setSelectedCalculationIdState(selectedCalculationId);
+  }, [selectedCalculationId]);
 
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
@@ -274,10 +277,17 @@ export default function MortgageForm({ onCalculate, selectedCalculationId, onLoa
               <FormItem>
                 <FormLabel>Load Saved Calculation</FormLabel>
                 <Select
+                  value={selectedCalculationIdState?.toString() || ""}
                   onValueChange={(value) => {
                     const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
                     if (savedCalc) {
                       setSelectedCalculationIdState(savedCalc.id);
+                      if (onLoadCalculation) {
+                        const values = onLoadCalculation(savedCalc);
+                        if (values) {
+                          form.reset(values);
+                        }
+                      }
                     } else {
                       setSelectedCalculationIdState(null);
                     }
