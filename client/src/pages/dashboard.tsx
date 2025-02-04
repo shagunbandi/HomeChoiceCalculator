@@ -54,7 +54,7 @@ interface SavedCalculation {
   totalInterest: string;
   name?: string;
   createdAt: string;
-  modifiedAt: string;
+  updatedAt: string;
 }
 
 export default function Dashboard() {
@@ -63,7 +63,7 @@ export default function Dashboard() {
   const [currentCalculation, setCurrentCalculation] = useState<CalculationResult | null>(null);
   const [selectedCalculationId, setSelectedCalculationId] = useState<number | null>(null);
 
-  const { data: savedCalculations } = useQuery<SavedCalculation[]>({
+  const { data: savedCalculations = [] } = useQuery<SavedCalculation[]>({
     queryKey: ["/api/calculations"],
   });
 
@@ -80,24 +80,23 @@ export default function Dashboard() {
     },
   });
 
-  const handleLoadCalculation = (calc: SavedCalculation) => {
+  const handleLoadCalculation = (calc: SavedCalculation | undefined) => {
     if (calc) {
-      const values = {
+      return {
         buying_cost: parseFloat(calc.buyingCost),
         down_payment: parseFloat(calc.downPayment),
         sell_price: parseFloat(calc.sellPrice),
         one_time_expense: parseFloat(calc.oneTimeExpense),
         interest_rate: calc.interestRate,
-        mortgage_tax_scheme: typeof calc.mortgageTaxScheme === 'number' ? calc.mortgageTaxScheme.toFixed(2) : "37.00",
+        mortgage_tax_scheme: calc.mortgageTaxScheme.toFixed(2),
         term_years: calc.loanTerm,
         yearly_maintenance: parseFloat(calc.yearlyMaintenance),
         current_rent: parseFloat(calc.currentRent),
         rental_increase: parseFloat(calc.rentalIncrease),
         name: calc.name || "",
       };
-      return values;
     }
-    return null;
+    return undefined;
   };
 
   const handleCardClick = (calc: SavedCalculation) => {
@@ -148,14 +147,14 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {savedCalculations?.length > 0 && (
+      {savedCalculations.length > 0 && (
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>Saved Calculations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              {savedCalculations?.map((calc) => (
+              {savedCalculations.map((calc) => (
                 <div
                   key={calc.id}
                   className="relative"
@@ -190,9 +189,9 @@ export default function Dashboard() {
                           <p className="font-medium">{calc.loanTerm} years</p>
                         </div>
                       </div>
-                      {calc.modifiedAt !== calc.createdAt && (
+                      {calc.updatedAt !== calc.createdAt && (
                         <div className="text-sm text-muted-foreground mt-2">
-                          Last modified {formatDistanceToNow(new Date(calc.modifiedAt))} ago
+                          Last modified {formatDistanceToNow(new Date(calc.updatedAt))} ago
                         </div>
                       )}
                     </div>

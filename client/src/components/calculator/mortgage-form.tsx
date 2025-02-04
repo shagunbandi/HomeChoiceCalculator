@@ -24,16 +24,11 @@ const mortgageSchema = z.object({
     }, "Interest rate must have exactly 2 decimal places"),
   mortgage_tax_scheme: z.string()
     .refine(val => {
-      if (val.endsWith('.')) return true;
+      if (val === '') return false;
       const num = parseFloat(val);
       return !isNaN(num) && num >= 0 && num <= 100;
     }, "Tax scheme must be between 0 and 100")
-    .transform(val => {
-      if (val.endsWith('.')) {
-        return parseFloat(val + '0');
-      }
-      return parseFloat(val);
-    }),
+    .transform(val => parseFloat(val)),
   term_years: z.number().int().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
   yearly_maintenance: z.number().min(0, "Yearly maintenance cannot be negative"),
   current_rent: z.number().min(0, "Current rent cannot be negative"),
@@ -60,7 +55,7 @@ interface SavedCalculation {
   totalInterest: string;
   name?: string;
   createdAt: string;
-  modifiedAt: string;
+  updatedAt: string;
 }
 
 interface MortgageFormProps {

@@ -66,7 +66,7 @@ export function registerRoutes(app: Express): Server {
         totalInterest: req.body.totalInterest,
         breakevenMonth: req.body.breakevenMonth,
         name: req.body.name,
-        
+        updatedAt: new Date(),
       })
       .where(
         eq(mortgageCalculations.id, parseInt(req.params.id)),
