@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import MortgageForm from "@/components/calculator/mortgage-form";
 import ResultsDisplay from "@/components/calculator/results-display";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 type CalculationResult = {
   monthlyPayment: number;
@@ -53,6 +54,8 @@ interface SavedCalculation {
 }
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  const formRef = useRef<HTMLDivElement>(null);
   const [currentCalculation, setCurrentCalculation] = useState<CalculationResult | null>(
     null
   );
@@ -65,6 +68,14 @@ export default function Dashboard() {
   const handleLoadCalculation = (calc: SavedCalculation) => {
     if (calc) {
       setSelectedCalculationId(calc.id);
+      // Scroll form into view
+      formRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Show toast notification
+      toast({
+        title: "Calculation Loaded",
+        description: `Loaded ${calc.name || "Unnamed Calculation"}`,
+      });
+
       const values = {
         buying_cost: parseFloat(calc.buyingCost),
         down_payment: parseFloat(calc.downPayment),
@@ -87,7 +98,7 @@ export default function Dashboard() {
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-8">Mortgage Calculator</h1>
 
-      <div className="grid lg:grid-cols-2 gap-8">
+      <div className="grid lg:grid-cols-2 gap-8" ref={formRef}>
         <Card>
           <CardHeader>
             <CardTitle>Calculate Mortgage</CardTitle>
