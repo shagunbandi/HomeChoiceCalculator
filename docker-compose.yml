@@ -1,18 +1,24 @@
-version: '3'
+version: '3.8'
 
 services:
-  app:
+  mortgage-app:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "6000:80"
-    restart: unless-stopped
-    # If you need environment variables
-    # environment:
-    #   - NODE_ENV=production
-    
-  # For development with hot reload
+    container_name: mortgage-calculator
+    stop_grace_period: 1s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mortgage.rule=Host(`mortgage.geekynavigator.com`)"
+      - "traefik.http.routers.mortgage.tls=true"
+      - "traefik.http.services.mortgage.loadbalancer.server.port=80"
+      - "traefik.http.routers.mortgage.tls.certresolver=cloudflare"
+      - "traefik.docker.network=mortgage_network"
+    networks:
+      - mortgage_network
+    restart: always
+
+  # Development service (optional - keep if you need it for local development)
   dev:
     build:
       context: .
@@ -24,4 +30,9 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-    command: npm run dev 
+    command: npm run dev
+    # Not connected to the external network since it's only for local development
+
+networks:
+  mortgage_network:
+    external: true 
