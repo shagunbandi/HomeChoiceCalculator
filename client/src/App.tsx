@@ -7,7 +7,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold mb-8">Home Choice Calculator</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center">Home Choice Calculator</h1>
         <MortgageCalculator />
       </div>
       <Toaster />

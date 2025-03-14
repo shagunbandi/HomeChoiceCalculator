@@ -45,7 +45,15 @@ interface ResultsDisplayProps {
 
 export default function ResultsDisplay({ calculation }: ResultsDisplayProps) {
   const [selectedMonth, setSelectedMonth] = useState(calculation.breakevenMonth);
-  const selectedMonthData = calculation.amortizationSchedule[selectedMonth - 1];
+
+  // Handle cases where the selected month is out of range of the schedule array
+  const selectedMonthIndex = Math.min(Math.max(0, selectedMonth - 1), calculation.amortizationSchedule.length - 1);
+  const selectedMonthData = calculation.amortizationSchedule[selectedMonthIndex];
+
+  // Ensure we have valid data for display
+  if (!selectedMonthData) {
+    return <div>No data available for the selected month.</div>;
+  }
 
   return (
     <div className="space-y-6">

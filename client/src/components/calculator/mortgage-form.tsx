@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { ChevronDown } from "lucide-react";
 
 const mortgageSchema = z.object({
   buying_cost: z.coerce.number().positive("Property value must be positive"),
@@ -22,13 +23,7 @@ const mortgageSchema = z.object({
     .refine(val => {
       return /^\d+(\.\d{1,2})?$/.test(val);
     }, "Interest rate must have at most 2 decimal places"),
-  mortgage_tax_scheme: z.string()
-    .refine(val => {
-      if (val === '') return false;
-      const num = parseFloat(val);
-      return !isNaN(num) && num >= 0 && num <= 100;
-    }, "Tax scheme must be between 0 and 100")
-    .transform(val => parseFloat(val)),
+  mortgage_tax_scheme: z.coerce.number().min(0, "Tax scheme must be at least 0").max(100, "Tax scheme must be at most 100"),
   term_years: z.coerce.number().positive("Loan term must be positive").lte(30, "Maximum loan term is 30 years"),
   yearly_maintenance: z.coerce.number().min(0, "Yearly maintenance cannot be negative"),
   current_rent: z.coerce.number().min(0, "Current rent cannot be negative"),
@@ -71,6 +66,7 @@ interface MortgageFormProps {
 export default function MortgageForm({ onCalculate }: MortgageFormProps) {
   const { toast } = useToast();
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
@@ -80,7 +76,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       sell_price: 500000,
       one_time_expense: 15000,
       interest_rate: "3.5",
-      mortgage_tax_scheme: "37.00",
+      mortgage_tax_scheme: 37,
       term_years: 30,
       yearly_maintenance: 2400,
       current_rent: 1200,
@@ -110,9 +106,9 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       const monthlyTaxCredit = monthlyInterest * (data.mortgage_tax_scheme / 100);
 
       // Monthly payment breakdown
-      const monthlyGrossMortgage = monthlyPayment; // Principal + Interest
-      const monthlyPaymentNet = monthlyGrossMortgage - monthlyTaxCredit;
-      const monthlyPaymentGross = monthlyPaymentNet + monthlyMaintenance;
+      const monthlyGrossMortgage = monthlyPayment; // This is the gross mortgage payment (principal + interest)
+      const monthlyPaymentNet = monthlyGrossMortgage - monthlyTaxCredit; // Net mortgage after tax credit
+      const monthlyPaymentGross = monthlyPaymentNet + monthlyMaintenance; // Total monthly cost including maintenance
 
       const amortizationSchedule = [];
       let balance = loanAmount;
@@ -156,13 +152,18 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
           cumulativeCostRenting,
           monthlyPaymentNet,
           cumulativeMaintenance,
-          monthlyGrossMortgage,
+          monthlyGrossMortgage, // This is correctly set to the gross mortgage payment
           monthlyTaxCredit
         });
       }
 
+      // If no breakeven point was found, set it to the last month
+      if (breakevenMonth === -1) {
+        breakevenMonth = numberOfPayments;
+      }
+
       const totalBuyingCost = cumulativeInterest - cumulativeTaxCredit +
-        cumulativeMaintenance + (data.buying_cost - data.sell_price);
+        cumulativeMaintenance + data.one_time_expense + (data.buying_cost - data.sell_price);
 
       const taxCredit = cumulativeInterest * (data.mortgage_tax_scheme / 100);
       const maintenanceTotal = data.yearly_maintenance * data.term_years;
@@ -170,8 +171,8 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
 
       const calculationResult = {
         monthlyPayment,
-        monthlyPaymentGross,
-        monthlyPaymentNet,
+        monthlyPaymentGross, // This should be the total monthly cost including maintenance
+        monthlyPaymentNet, // This is net mortgage after tax credit
         totalPayments,
         totalInterest,
         loanAmount,
@@ -363,6 +364,79 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
         <Button type="submit" className="w-full" disabled={isCalculating}>
           {isCalculating ? "Calculating..." : "Calculate"}
         </Button>
+        
+        <div className="mt-6 border rounded-md">
+          <button 
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex w-full justify-between p-4 text-left font-medium text-sm"
+          >
+            Calculation Logic
+            <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {isExpanded && (
+            <div className="p-4 pt-0 space-y-4 text-sm border-t">
+              <div>
+                <h4 className="font-semibold">Loan Amount</h4>
+                <p className="text-muted-foreground">Property Value - Down Payment</p>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold">Monthly Mortgage Payment (Principal + Interest)</h4>
+                <p className="text-muted-foreground mb-1">Uses the standard mortgage amortization formula:</p>
+                <div className="bg-muted p-3 rounded text-xs font-mono">
+                  Monthly Payment = Principal × [Rate × (1+Rate)^Term] / [(1+Rate)^Term - 1]
+                  <br /><br />
+                  Where:
+                  <br />
+                  • Principal = Property Value - Down Payment
+                  <br />
+                  • Rate = Annual Interest Rate ÷ 12 (in decimal form)
+                  <br />
+                  • Term = Loan Term in Years × 12 (total months)
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold">Tax Benefits</h4>
+                <p className="text-muted-foreground">
+                  Monthly Tax Credit = Monthly Interest × Mortgage Tax Scheme %
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold">Monthly Costs</h4>
+                <div className="pl-4 border-l-2 border-muted space-y-1">
+                  <p className="text-muted-foreground">Gross Mortgage = Monthly Payment (Principal + Interest)</p>
+                  <p className="text-muted-foreground">Net Mortgage = Gross Mortgage - Tax Credit</p>
+                  <p className="text-muted-foreground">Monthly Maintenance = Yearly Maintenance ÷ 12</p>
+                  <p className="text-muted-foreground">Total Monthly Cost = Net Mortgage + Monthly Maintenance</p>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold">Buying vs. Renting Analysis</h4>
+                <p className="text-muted-foreground mb-1">Cumulative cost of buying includes:</p>
+                <div className="pl-4 border-l-2 border-muted space-y-1">
+                  <p className="text-muted-foreground">+ Total Interest Paid</p>
+                  <p className="text-muted-foreground">- Total Tax Credits</p>
+                  <p className="text-muted-foreground">+ Cumulative Maintenance</p>
+                  <p className="text-muted-foreground">+ One-time Expenses</p>
+                  <p className="text-muted-foreground">+ Property Value Depreciation (or - Appreciation)</p>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold">Breakeven Analysis</h4>
+                <p className="text-muted-foreground">
+                  The breakeven point is the month when the cumulative cost of buying becomes less than 
+                  the cumulative cost of renting. Rent increases annually according to the specified percentage.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </form>
     </Form>
   );
