@@ -5,9 +5,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 
 const mortgageSchema = z.object({
@@ -40,26 +38,6 @@ const mortgageSchema = z.object({
 
 type MortgageFormData = z.infer<typeof mortgageSchema>;
 
-interface SavedCalculation {
-  id: number;
-  userId: number;
-  buyingCost: string;
-  downPayment: string;
-  sellPrice: string;
-  oneTimeExpense: string;
-  interestRate: string;
-  mortgageTaxScheme: number;
-  loanTerm: number;
-  yearlyMaintenance: string;
-  currentRent: string;
-  rentalIncrease: string;
-  monthlyPayment: string;
-  totalInterest: string;
-  name?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface MortgageFormProps {
   onCalculate: (result: {
     monthlyPayment: number;
@@ -88,275 +66,159 @@ interface MortgageFormProps {
       monthlyTaxCredit: number;
     }>;
   }) => void;
-  selectedCalculationId?: number | null;
-  onLoadCalculation?: (calc: SavedCalculation) => MortgageFormData | undefined;
-  onCalculationCreated?: (id: number) => void;
 }
 
-export default function MortgageForm({
-  onCalculate,
-  selectedCalculationId,
-  onLoadCalculation,
-  onCalculationCreated
-}: MortgageFormProps) {
+export default function MortgageForm({ onCalculate }: MortgageFormProps) {
   const { toast } = useToast();
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   const form = useForm<MortgageFormData>({
     resolver: zodResolver(mortgageSchema),
     defaultValues: {
-      buying_cost: 300000,
-      down_payment: 60000,
-      sell_price: 350000,
-      one_time_expense: 5000,
-      interest_rate: "3.50",
+      buying_cost: 400000,
+      down_payment: 40000,
+      sell_price: 500000,
+      one_time_expense: 15000,
+      interest_rate: "3.5",
       mortgage_tax_scheme: "37.00",
       term_years: 30,
       yearly_maintenance: 2400,
-      current_rent: 1500,
+      current_rent: 1200,
       rental_increase: 2,
       name: "",
     },
   });
 
-  const { data: savedCalculations } = useQuery<SavedCalculation[]>({
-    queryKey: ["/api/calculations"],
-  });
-
-  useEffect(() => {
-    if (selectedCalculationId && savedCalculations) {
-      const savedCalc = savedCalculations.find(calc => calc.id === selectedCalculationId);
-      if (savedCalc && onLoadCalculation) {
-        const values = onLoadCalculation(savedCalc);
-        if (values) {
-          form.reset(values);
-        }
-      }
-    }
-  }, [selectedCalculationId, savedCalculations, form, onLoadCalculation]);
-
-  const calculateMutation = useMutation({
-    mutationFn: async (data: MortgageFormData & {
-      monthlyPayment: number;
-      totalInterest: number;
-      breakevenMonth: number;
-    }) => {
-      const endpoint = (!isCreatingNew && selectedCalculationId)
-        ? `/api/calculations/${selectedCalculationId}`
-        : "/api/calculations";
-
-      const method = (!isCreatingNew && selectedCalculationId) ? "PATCH" : "POST";
-
-      const res = await apiRequest(method, endpoint, {
-        buyingCost: data.buying_cost,
-        downPayment: data.down_payment,
-        sellPrice: data.sell_price,
-        oneTimeExpense: data.one_time_expense,
-        interestRate: data.interest_rate,
-        mortgageTaxScheme: data.mortgage_tax_scheme,
-        loanTerm: data.term_years,
-        yearlyMaintenance: data.yearly_maintenance,
-        currentRent: data.current_rent,
-        rentalIncrease: data.rental_increase,
-        monthlyPayment: data.monthlyPayment,
-        totalInterest: data.totalInterest,
-        breakevenMonth: data.breakevenMonth,
-        name: data.name || undefined
-      });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/calculations"] });
-      if (isCreatingNew) {
-        onCalculationCreated?.(data.id);
-        toast({
-          title: "New Calculation Created",
-          description: "Your new calculation has been saved successfully.",
-        });
-      } else {
-        toast({
-          title: "Calculation Updated",
-          description: "Your changes have been saved successfully.",
-        });
-      }
-    },
-  });
-
-  const onSubmit = async (data: MortgageFormData) => {
-    const loanAmount = data.buying_cost - data.down_payment;
-    const monthlyRate = parseFloat(data.interest_rate) / 100 / 12;
-    const numberOfPayments = data.term_years * 12;
-
-    const monthlyPayment =
-      (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
-      (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-
-    const totalPayments = monthlyPayment * numberOfPayments;
-    const totalInterest = totalPayments - loanAmount;
-
-    // Monthly calculations
-    const monthlyMaintenance = data.yearly_maintenance / 12;
-    const monthlyInterest = monthlyRate * loanAmount;
-    const monthlyTaxCredit = monthlyInterest * (data.mortgage_tax_scheme / 100);
-
-    // Monthly payment breakdown
-    const monthlyGrossMortgage = monthlyPayment; // Principal + Interest
-    const monthlyPaymentNet = monthlyGrossMortgage - monthlyTaxCredit;
-    const monthlyPaymentGross = monthlyPaymentNet + monthlyMaintenance;
-
-    const amortizationSchedule = [];
-    let balance = loanAmount;
-    let cumulativeInterest = 0;
-    let cumulativeTaxCredit = 0;
-    let cumulativeMaintenance = 0;
-    let cumulativeCostRenting = 0;
-    let breakevenMonth = -1;
-    let currentRent = data.current_rent;
-
-    for (let month = 1; month <= numberOfPayments; month++) {
-      const interest = balance * monthlyRate;
-      const principalPayment = monthlyPayment - interest;
-      balance -= principalPayment;
-
-      cumulativeInterest += interest;
-      cumulativeTaxCredit += monthlyTaxCredit;
-      cumulativeMaintenance += monthlyMaintenance;
-
-      // Cost of buying calculation for this month
-      const costOfBuying = cumulativeInterest - cumulativeTaxCredit +
-        cumulativeMaintenance + data.one_time_expense + (data.buying_cost - data.sell_price);
-
-      // Update rent with annual increase
-      if (month % 12 === 0) {
-        currentRent *= (1 + data.rental_increase / 100);
-      }
-      cumulativeCostRenting += currentRent;
-
-      // Find breakeven point
-      if (breakevenMonth === -1 && costOfBuying < cumulativeCostRenting) {
-        breakevenMonth = month;
-      }
-
-      amortizationSchedule.push({
-        month,
-        principal: principalPayment,
-        interest,
-        balance: Math.max(0, balance),
-        cumulativeCostBuying: costOfBuying,
-        cumulativeCostRenting,
-        monthlyPaymentNet,
-        cumulativeMaintenance,
-        monthlyGrossMortgage,
-        monthlyTaxCredit
-      });
-    }
-
-    const totalBuyingCost = cumulativeInterest - cumulativeTaxCredit +
-      cumulativeMaintenance + (data.buying_cost - data.sell_price);
-
-    const taxCredit = cumulativeInterest * (data.mortgage_tax_scheme / 100);
-    const maintenanceTotal = data.yearly_maintenance * data.term_years;
-    const capitalGain = data.sell_price - data.buying_cost;
-
-    const calculationResult = {
-      monthlyPayment,
-      monthlyPaymentGross,
-      monthlyPaymentNet,
-      totalPayments,
-      totalInterest,
-      loanAmount,
-      taxCredit,
-      maintenanceTotal,
-      capitalGain,
-      totalBuyingCost,
-      totalRentalCost: cumulativeCostRenting,
-      breakevenMonth,
-      oneTimeExpense: data.one_time_expense,
-      amortizationSchedule,
-    };
-
-    // Call onCalculate before the mutation to update the UI immediately
-    onCalculate(calculationResult);
-
+  const onSubmit = (data: MortgageFormData) => {
+    setIsCalculating(true);
+    
     try {
-      const savedCalculation = await calculateMutation.mutateAsync({
-        ...data,
-        monthlyPayment,
-        totalInterest,
-        breakevenMonth,
-      });
+      const loanAmount = data.buying_cost - data.down_payment;
+      const monthlyRate = parseFloat(data.interest_rate) / 100 / 12;
+      const numberOfPayments = data.term_years * 12;
 
-      // If this is a new calculation being created, notify the parent
-      if (isCreatingNew) {
-        onCalculationCreated?.(savedCalculation.id);
+      const monthlyPayment =
+        (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
+        (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+
+      const totalPayments = monthlyPayment * numberOfPayments;
+      const totalInterest = totalPayments - loanAmount;
+
+      // Monthly calculations
+      const monthlyMaintenance = data.yearly_maintenance / 12;
+      const monthlyInterest = monthlyRate * loanAmount;
+      const monthlyTaxCredit = monthlyInterest * (data.mortgage_tax_scheme / 100);
+
+      // Monthly payment breakdown
+      const monthlyGrossMortgage = monthlyPayment; // Principal + Interest
+      const monthlyPaymentNet = monthlyGrossMortgage - monthlyTaxCredit;
+      const monthlyPaymentGross = monthlyPaymentNet + monthlyMaintenance;
+
+      const amortizationSchedule = [];
+      let balance = loanAmount;
+      let cumulativeInterest = 0;
+      let cumulativeTaxCredit = 0;
+      let cumulativeMaintenance = 0;
+      let cumulativeCostRenting = 0;
+      let breakevenMonth = -1;
+      let currentRent = data.current_rent;
+
+      for (let month = 1; month <= numberOfPayments; month++) {
+        const interest = balance * monthlyRate;
+        const principalPayment = monthlyPayment - interest;
+        balance -= principalPayment;
+
+        cumulativeInterest += interest;
+        cumulativeTaxCredit += monthlyTaxCredit;
+        cumulativeMaintenance += monthlyMaintenance;
+
+        // Cost of buying calculation for this month
+        const costOfBuying = cumulativeInterest - cumulativeTaxCredit +
+          cumulativeMaintenance + data.one_time_expense + (data.buying_cost - data.sell_price);
+
+        // Update rent with annual increase
+        if (month % 12 === 0) {
+          currentRent *= (1 + data.rental_increase / 100);
+        }
+        cumulativeCostRenting += currentRent;
+
+        // Find breakeven point
+        if (breakevenMonth === -1 && costOfBuying < cumulativeCostRenting) {
+          breakevenMonth = month;
+        }
+
+        amortizationSchedule.push({
+          month,
+          principal: principalPayment,
+          interest,
+          balance: Math.max(0, balance),
+          cumulativeCostBuying: costOfBuying,
+          cumulativeCostRenting,
+          monthlyPaymentNet,
+          cumulativeMaintenance,
+          monthlyGrossMortgage,
+          monthlyTaxCredit
+        });
       }
+
+      const totalBuyingCost = cumulativeInterest - cumulativeTaxCredit +
+        cumulativeMaintenance + (data.buying_cost - data.sell_price);
+
+      const taxCredit = cumulativeInterest * (data.mortgage_tax_scheme / 100);
+      const maintenanceTotal = data.yearly_maintenance * data.term_years;
+      const capitalGain = data.sell_price - data.buying_cost;
+
+      const calculationResult = {
+        monthlyPayment,
+        monthlyPaymentGross,
+        monthlyPaymentNet,
+        totalPayments,
+        totalInterest,
+        loanAmount,
+        taxCredit,
+        maintenanceTotal,
+        capitalGain,
+        totalBuyingCost,
+        totalRentalCost: cumulativeCostRenting,
+        breakevenMonth,
+        oneTimeExpense: data.one_time_expense,
+        amortizationSchedule,
+      };
+
+      onCalculate(calculationResult);
+      toast({
+        title: "Calculation Complete",
+        description: "Your mortgage calculation has been completed successfully.",
+      });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to save calculation. Please try again.",
+        description: "Failed to calculate mortgage. Please check your inputs and try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsCalculating(false);
     }
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {savedCalculations?.length > 0 && (
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Load Saved Calculation</FormLabel>
-                <Select
-                  value={selectedCalculationId?.toString() || ""}
-                  onValueChange={(value) => {
-                    if (value) {
-                      const savedCalc = savedCalculations.find(calc => calc.id.toString() === value);
-                      if (savedCalc && onLoadCalculation) {
-                        const values = onLoadCalculation(savedCalc);
-                        if (values) {
-                          form.reset(values);
-                        }
-                      }
-                    }
-                  }}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a saved calculation" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {savedCalculations.map((calc) => (
-                      <SelectItem key={calc.id} value={calc.id.toString()}>
-                        {calc.name || `Calculation ${calc.id}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
-        )}
-
-        <div className="grid md:grid-cols-2 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="buying_cost"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Property Purchase Price (€)</FormLabel>
+                <FormLabel>Property Value (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.01"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
+                  <Input type="number" placeholder="400000" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="down_payment"
@@ -364,29 +226,27 @@ export default function MortgageForm({
               <FormItem>
                 <FormLabel>Down Payment (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.01"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
+                  <Input type="number" placeholder="40000" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="sell_price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Expected Selling Price (€)</FormLabel>
+                <FormLabel>Estimated Selling Price (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.01"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
+                  <Input type="number" placeholder="500000" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="one_time_expense"
@@ -394,14 +254,13 @@ export default function MortgageForm({
               <FormItem>
                 <FormLabel>One-time Expenses (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.01"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
+                  <Input type="number" placeholder="15000" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="interest_rate"
@@ -409,19 +268,13 @@ export default function MortgageForm({
               <FormItem>
                 <FormLabel>Interest Rate (%)</FormLabel>
                 <FormControl>
-                  <Input {...field}
-                    onChange={e => {
-                      const value = e.target.value;
-                      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-                        field.onChange(value);
-                      }
-                    }}
-                  />
+                  <Input placeholder="3.5" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="mortgage_tax_scheme"
@@ -429,39 +282,41 @@ export default function MortgageForm({
               <FormItem>
                 <FormLabel>Mortgage Tax Scheme (%)</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                        field.onChange(value);
-                      }
-                    }}
-                  />
+                  <Input placeholder="37.00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="term_years"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Loan Term (years)</FormLabel>
-                <FormControl>
-                  <Input {...field} type="number" min="1" max="30" step="1"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
-                </FormControl>
+                <FormLabel>Loan Term (Years)</FormLabel>
+                <Select 
+                  onValueChange={(value) => field.onChange(parseInt(value))}
+                  defaultValue={field.value.toString()}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select term" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {[10, 15, 20, 25, 30].map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year} years
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="yearly_maintenance"
@@ -469,14 +324,13 @@ export default function MortgageForm({
               <FormItem>
                 <FormLabel>Yearly Maintenance (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.01"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
+                  <Input type="number" placeholder="2400" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="current_rent"
@@ -484,14 +338,13 @@ export default function MortgageForm({
               <FormItem>
                 <FormLabel>Current Monthly Rent (€)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.01"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
+                  <Input type="number" placeholder="1200" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="rental_increase"
@@ -499,9 +352,7 @@ export default function MortgageForm({
               <FormItem>
                 <FormLabel>Annual Rental Increase (%)</FormLabel>
                 <FormControl>
-                  <Input {...field} type="number" min="0" step="0.01"
-                    onChange={e => field.onChange(e.target.value)}
-                  />
+                  <Input type="number" placeholder="2" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -509,48 +360,9 @@ export default function MortgageForm({
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Calculation Name (optional)</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex gap-4 justify-end">
-          {selectedCalculationId ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreatingNew(true)}
-                disabled={calculateMutation.isPending}
-              >
-                Save as New
-              </Button>
-              <Button
-                type="submit"
-                disabled={calculateMutation.isPending || isCreatingNew}
-              >
-                Update Calculation
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={calculateMutation.isPending}
-            >
-              Calculate & Save
-            </Button>
-          )}
-        </div>
+        <Button type="submit" className="w-full" disabled={isCalculating}>
+          {isCalculating ? "Calculating..." : "Calculate"}
+        </Button>
       </form>
     </Form>
   );
