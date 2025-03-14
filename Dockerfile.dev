@@ -1,0 +1,19 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy the rest of the application code
+# Note: When using volumes in docker-compose.yml, this will be overridden
+COPY . .
+
+# Expose development port
+EXPOSE 3000
+
+# Start development server with host set to 0.0.0.0 to allow external access
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"] 
