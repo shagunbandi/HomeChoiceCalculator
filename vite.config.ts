@@ -1,13 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import themeJson from "@replit/vite-plugin-shadcn-theme-json";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    themeJson(),
-  ],
+  plugins: [react()],
   root: path.resolve(__dirname, "client"),
   resolve: {
     alias: {

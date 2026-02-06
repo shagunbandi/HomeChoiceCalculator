@@ -87,7 +87,7 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
 
   const onSubmit = (data: MortgageFormData) => {
     setIsCalculating(true);
-    
+
     try {
       const loanAmount = data.buying_cost - data.down_payment;
       const monthlyRate = parseFloat(data.interest_rate) / 100 / 12;
@@ -100,15 +100,13 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       const totalPayments = monthlyPayment * numberOfPayments;
       const totalInterest = totalPayments - loanAmount;
 
-      // Monthly calculations
       const monthlyMaintenance = data.yearly_maintenance / 12;
       const monthlyInterest = monthlyRate * loanAmount;
       const monthlyTaxCredit = monthlyInterest * (data.mortgage_tax_scheme / 100);
 
-      // Monthly payment breakdown
-      const monthlyGrossMortgage = monthlyPayment; // This is the gross mortgage payment (principal + interest)
-      const monthlyPaymentNet = monthlyGrossMortgage - monthlyTaxCredit; // Net mortgage after tax credit
-      const monthlyPaymentGross = monthlyPaymentNet + monthlyMaintenance; // Total monthly cost including maintenance
+      const monthlyGrossMortgage = monthlyPayment;
+      const monthlyPaymentNet = monthlyGrossMortgage - monthlyTaxCredit;
+      const monthlyPaymentGross = monthlyPaymentNet + monthlyMaintenance;
 
       const amortizationSchedule = [];
       let balance = loanAmount;
@@ -128,17 +126,14 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
         cumulativeTaxCredit += monthlyTaxCredit;
         cumulativeMaintenance += monthlyMaintenance;
 
-        // Cost of buying calculation for this month
         const costOfBuying = cumulativeInterest - cumulativeTaxCredit +
           cumulativeMaintenance + data.one_time_expense + (data.buying_cost - data.sell_price);
 
-        // Update rent with annual increase
         if (month % 12 === 0) {
           currentRent *= (1 + data.rental_increase / 100);
         }
         cumulativeCostRenting += currentRent;
 
-        // Find breakeven point
         if (breakevenMonth === -1 && costOfBuying < cumulativeCostRenting) {
           breakevenMonth = month;
         }
@@ -152,12 +147,11 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
           cumulativeCostRenting,
           monthlyPaymentNet,
           cumulativeMaintenance,
-          monthlyGrossMortgage, // This is correctly set to the gross mortgage payment
+          monthlyGrossMortgage,
           monthlyTaxCredit
         });
       }
 
-      // If no breakeven point was found, set it to the last month
       if (breakevenMonth === -1) {
         breakevenMonth = numberOfPayments;
       }
@@ -169,10 +163,10 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
       const maintenanceTotal = data.yearly_maintenance * data.term_years;
       const capitalGain = data.sell_price - data.buying_cost;
 
-      const calculationResult = {
+      onCalculate({
         monthlyPayment,
-        monthlyPaymentGross, // This should be the total monthly cost including maintenance
-        monthlyPaymentNet, // This is net mortgage after tax credit
+        monthlyPaymentGross,
+        monthlyPaymentNet,
         totalPayments,
         totalInterest,
         loanAmount,
@@ -184,14 +178,12 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
         breakevenMonth,
         oneTimeExpense: data.one_time_expense,
         amortizationSchedule,
-      };
-
-      onCalculate(calculationResult);
+      });
       toast({
         title: "Calculation Complete",
         description: "Your mortgage calculation has been completed successfully.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to calculate mortgage. Please check your inputs and try again.",
@@ -204,234 +196,269 @@ export default function MortgageForm({ onCalculate }: MortgageFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="buying_cost"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Property Value (€)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="400000" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="down_payment"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Down Payment (€)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="40000" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="sell_price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Estimated Selling Price (€)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="500000" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="one_time_expense"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>One-time Expenses (€)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="15000" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="interest_rate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Interest Rate (%)</FormLabel>
-                <FormControl>
-                  <Input placeholder="3.5" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="mortgage_tax_scheme"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Mortgage Tax Scheme (%)</FormLabel>
-                <FormControl>
-                  <Input placeholder="37.00" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="term_years"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Loan Term (Years)</FormLabel>
-                <Select 
-                  onValueChange={(value) => field.onChange(parseInt(value))}
-                  defaultValue={field.value.toString()}
-                >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Property</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="buying_cost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Property Value</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select term" />
-                    </SelectTrigger>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                      <Input type="number" placeholder="400000" className="pl-7" {...field} />
+                    </div>
                   </FormControl>
-                  <SelectContent>
-                    {[10, 15, 20, 25, 30].map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year} years
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="yearly_maintenance"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Yearly Maintenance (€)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="2400" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="down_payment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Down Payment</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                      <Input type="number" placeholder="40000" className="pl-7" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="current_rent"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Current Monthly Rent (€)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="1200" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="sell_price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Est. Selling Price</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                      <Input type="number" placeholder="500000" className="pl-7" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="rental_increase"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Annual Rental Increase (%)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="2" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="one_time_expense"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>One-time Expenses</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                      <Input type="number" placeholder="15000" className="pl-7" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Loan</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="interest_rate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Interest Rate</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input placeholder="3.5" className="pr-7" {...field} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="mortgage_tax_scheme"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tax Scheme</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input placeholder="37.00" className="pr-7" {...field} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="term_years"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Loan Term</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(parseInt(value))}
+                    defaultValue={field.value.toString()}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select term" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {[10, 15, 20, 25, 30].map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year} years
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="yearly_maintenance"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Yearly Maintenance</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                      <Input type="number" placeholder="2400" className="pl-7" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Rental Comparison</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="current_rent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monthly Rent</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                      <Input type="number" placeholder="1200" className="pl-7" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="rental_increase"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Annual Increase</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input type="number" placeholder="2" className="pr-7" {...field} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         <Button type="submit" className="w-full" disabled={isCalculating}>
           {isCalculating ? "Calculating..." : "Calculate"}
         </Button>
-        
-        <div className="mt-6 border rounded-md">
-          <button 
+
+        <div className="rounded-md border">
+          <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex w-full justify-between p-4 text-left font-medium text-sm"
+            className="flex w-full items-center justify-between p-3 text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Calculation Logic
             <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
           </button>
-          
+
           {isExpanded && (
-            <div className="p-4 pt-0 space-y-4 text-sm border-t">
+            <div className="border-t p-3 space-y-3 text-sm">
               <div>
-                <h4 className="font-semibold">Loan Amount</h4>
+                <h4 className="font-semibold text-foreground">Loan Amount</h4>
                 <p className="text-muted-foreground">Property Value - Down Payment</p>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold">Monthly Mortgage Payment (Principal + Interest)</h4>
-                <p className="text-muted-foreground mb-1">Uses the standard mortgage amortization formula:</p>
+                <h4 className="font-semibold text-foreground">Monthly Mortgage Payment</h4>
+                <p className="text-muted-foreground mb-1">Standard mortgage amortization formula:</p>
                 <div className="bg-muted p-3 rounded text-xs font-mono">
-                  Monthly Payment = Principal × [Rate × (1+Rate)^Term] / [(1+Rate)^Term - 1]
+                  Payment = P x [r(1+r)^n] / [(1+r)^n - 1]
                   <br /><br />
-                  Where:
+                  P = Property Value - Down Payment
                   <br />
-                  • Principal = Property Value - Down Payment
+                  r = Annual Interest Rate / 12
                   <br />
-                  • Rate = Annual Interest Rate ÷ 12 (in decimal form)
-                  <br />
-                  • Term = Loan Term in Years × 12 (total months)
+                  n = Loan Term x 12
                 </div>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold">Tax Benefits</h4>
+                <h4 className="font-semibold text-foreground">Tax Benefits</h4>
                 <p className="text-muted-foreground">
-                  Monthly Tax Credit = Monthly Interest × Mortgage Tax Scheme %
+                  Monthly Tax Credit = Monthly Interest x Tax Scheme %
                 </p>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold">Monthly Costs</h4>
-                <div className="pl-4 border-l-2 border-muted space-y-1">
-                  <p className="text-muted-foreground">Gross Mortgage = Monthly Payment (Principal + Interest)</p>
+                <h4 className="font-semibold text-foreground">Monthly Costs</h4>
+                <div className="pl-3 border-l-2 border-primary/20 space-y-1">
+                  <p className="text-muted-foreground">Gross Mortgage = Payment (Principal + Interest)</p>
                   <p className="text-muted-foreground">Net Mortgage = Gross Mortgage - Tax Credit</p>
-                  <p className="text-muted-foreground">Monthly Maintenance = Yearly Maintenance ÷ 12</p>
-                  <p className="text-muted-foreground">Total Monthly Cost = Net Mortgage + Monthly Maintenance</p>
+                  <p className="text-muted-foreground">Total Monthly = Net Mortgage + Maintenance / 12</p>
                 </div>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold">Buying vs. Renting Analysis</h4>
-                <p className="text-muted-foreground mb-1">Cumulative cost of buying includes:</p>
-                <div className="pl-4 border-l-2 border-muted space-y-1">
+                <h4 className="font-semibold text-foreground">Buying vs. Renting</h4>
+                <div className="pl-3 border-l-2 border-primary/20 space-y-1">
                   <p className="text-muted-foreground">+ Total Interest Paid</p>
                   <p className="text-muted-foreground">- Total Tax Credits</p>
                   <p className="text-muted-foreground">+ Cumulative Maintenance</p>
                   <p className="text-muted-foreground">+ One-time Expenses</p>
-                  <p className="text-muted-foreground">+ Property Value Depreciation (or - Appreciation)</p>
+                  <p className="text-muted-foreground">+/- Property Value Change</p>
                 </div>
               </div>
-              
+
               <div>
-                <h4 className="font-semibold">Breakeven Analysis</h4>
+                <h4 className="font-semibold text-foreground">Breakeven</h4>
                 <p className="text-muted-foreground">
-                  The breakeven point is the month when the cumulative cost of buying becomes less than 
-                  the cumulative cost of renting. Rent increases annually according to the specified percentage.
+                  The month when cumulative buying cost becomes less than cumulative renting cost.
                 </p>
               </div>
             </div>

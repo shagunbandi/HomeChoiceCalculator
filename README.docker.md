@@ -1,76 +1,81 @@
-# Dockerized Home Choice Calculator
+# Home Choice Calculator - Setup Guide
 
-This document explains how to use the Docker setup for the Home Choice Calculator application.
+This document explains how to run the Home Choice Calculator application.
 
 ## Prerequisites
 
-- Docker
-- Docker Compose
+- Node.js (v18 or higher)
+- npm
+- Docker & Docker Compose (for production deployment only)
+- [just](https://github.com/casey/just) command runner (optional, but recommended)
 
-## Getting Started
+## Quick Start
 
-### Production Build
+### Development
 
-To build and run the production version of the application:
-
-```bash
-# Build and start the container
-docker-compose up -d app
-
-# Access the application at http://localhost:8080
-```
-
-### Development Mode
-
-For development with hot-reloading:
+Run the application locally with hot-reloading:
 
 ```bash
-# Build and start the container in development mode
-docker-compose up dev
+# Using just
+just dev
 
-# Access the application at http://localhost:3000
+# Or using npm directly
+npm install
+npm run dev
 ```
 
-## Docker Commands Reference
+Access the application at http://localhost:5173
 
-### Building the Images
+### Production Deployment
+
+Deploy the application using Docker:
 
 ```bash
-# Build both images
-docker-compose build
+# Using just
+just prod-up-build
 
-# Build only the production image
-docker-compose build app
-
-# Build only the development image
-docker-compose build dev
+# Or using docker-compose directly
+docker-compose up --build -d
 ```
 
-### Managing Containers
+The application will be served via Nginx and accessible through Traefik at the configured domain.
 
-```bash
-# Start containers
-docker-compose up -d
+## Available Commands
 
-# Stop containers
-docker-compose down
+The project uses [just](https://github.com/casey/just) for task management. Run `just` to see all available commands:
 
-# View logs
-docker-compose logs -f
+### Development Commands
 
-# Access a shell in the container
-docker-compose exec app sh
-docker-compose exec dev sh
-```
+- `just dev` - Start development server
+- `just install` - Install npm dependencies
+- `just build` - Build the application
+- `just preview` - Preview production build locally
+- `just check` - Run TypeScript type checking
+
+### Production Commands
+
+- `just prod-up` - Start production environment
+- `just prod-up-d` - Start production in detached mode
+- `just prod-up-build` - Build and start production
+- `just prod-down` - Stop production environment
+- `just prod-logs` - View production logs
+- `just prod-restart` - Restart production environment
+
+### Utility Commands
+
+- `just clean` - Clean up Docker resources
 
 ## Configuration
 
-- The production build serves the application on port 8080
-- The development build serves the application on port 3000 with hot-reloading
-- The Nginx configuration for the production build is in `nginx.conf`
+### Production Setup
 
-## Customization
+- The production build uses Nginx to serve static files
+- Traefik handles SSL certificates and routing
+- The application is accessible at `mortgage.geekynavigator.com`
+- Nginx configuration is in `nginx.conf`
 
-- To modify the Nginx configuration, edit the `nginx.conf` file
-- To modify the Docker setup, edit the `Dockerfile`, `Dockerfile.dev`, or `docker-compose.yml` files
-- To change the exposed ports, edit the `ports` section in `docker-compose.yml` 
+### Customization
+
+- To modify Nginx settings, edit `nginx.conf`
+- To change Docker configuration, edit `Dockerfile` or `docker-compose.yml`
+- To update Traefik labels, edit the labels section in `docker-compose.yml` 
