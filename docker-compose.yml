@@ -9,7 +9,7 @@ services:
     stop_grace_period: 1s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mortgage.rule=Host(`mortgage.geekynavigator.com`)"
+      - "traefik.http.routers.mortgage.rule=Host(`mortgage.shagunbandi.com`)"
       - "traefik.http.routers.mortgage.tls=true"
       - "traefik.http.services.mortgage.loadbalancer.server.port=80"
       - "traefik.http.routers.mortgage.tls.certresolver=cloudflare"
